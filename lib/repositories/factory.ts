@@ -58,3 +58,5 @@ export function createApprovalStore(options: PersistenceFactoryOptions = {}) {
 
   return new InMemoryApprovalStore();
 }
+
+// This file intentionally exports createApprovalStore locally; do not import it from approvals/store.
