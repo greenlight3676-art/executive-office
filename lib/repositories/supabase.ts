@@ -1,3 +1,5 @@
+import { createClient } from "@supabase/supabase-js";
+
 export interface SupabaseRepositoryConfig {
   url?: string;
   serviceRoleKey?: string;
@@ -32,6 +34,19 @@ export interface SupabaseClientLike {
       };
     };
   };
+}
+
+export function createSupabaseClient(config: SupabaseRepositoryConfig): SupabaseClientLike {
+  if (!config.url || !config.serviceRoleKey) {
+    throw new Error("Supabase URL and service role key are required.");
+  }
+
+  return createClient(config.url.replace(/\/$/, ""), config.serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }) as unknown as SupabaseClientLike;
 }
 
 export function isSupabaseConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
