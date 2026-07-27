@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { ActivityFeed } from "@/components/ActivityFeed";
+import { BoardroomPanel } from "@/components/BoardroomPanel";
 import { ExecutiveStatusPanel } from "@/components/ExecutiveStatusPanel";
 import { MissionCenter } from "@/components/MissionCenter";
 
@@ -61,7 +62,7 @@ export default function Home() {
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Executive route failed.");
-      const content = payload.responses?.[0]?.content ?? "No response generated.";
+      const content = payload.responses?.[0]?.text ?? payload.responses?.[0]?.content ?? "No response generated.";
       setMessages([...nextMessages, { role: "assistant", content }]);
     } catch (error) {
       setMessages([...nextMessages, { role: "assistant", content: error instanceof Error ? error.message : "The executive route is unavailable right now." }]);
@@ -78,11 +79,11 @@ export default function Home() {
             <div>
               <p className="text-sm uppercase tracking-[0.35em] text-cyan-300">FORGE • Executive Office</p>
               <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Build, assign, and move.</h1>
-              <p className="mt-3 max-w-2xl text-sm text-zinc-400 sm:text-base">Your command center now saves real missions and routes work to the executive layer.</p>
+              <p className="mt-3 max-w-2xl text-sm text-zinc-400 sm:text-base">Your command center saves real missions, routes direct executive work, and now runs full board meetings.</p>
             </div>
             <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">
-              <div className="font-medium">Persistence connected</div>
-              <div className="mt-1 text-emerald-100/80">New missions survive refreshes and deployments.</div>
+              <div className="font-medium">Executive layer online</div>
+              <div className="mt-1 text-emerald-100/80">Missions persist and the Board Room can coordinate one plan.</div>
             </div>
           </div>
         </header>
@@ -91,6 +92,8 @@ export default function Home() {
           <ExecutiveStatusPanel executives={executives} activeExecutiveName={selectedExecutive.name} onSelect={setSelectedExecutive} />
           <MissionCenter />
         </section>
+
+        <BoardroomPanel />
 
         <section className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="space-y-6">
