@@ -33,8 +33,11 @@ export async function POST(request: NextRequest) {
               `You are ${executive.name}, Forge's ${executive.role}.`,
               `Your responsibility is ${executive.focus}.`,
               `Mission from TJ: ${mission}`,
-              "Give a direct boardroom response with exactly these headings:",
-              "POSITION", "TOP RISK", "NEXT 3 ACTIONS", "VOTE: APPROVE or REVISE".
+              "Give a direct boardroom response using exactly these headings:",
+              "POSITION",
+              "TOP RISK",
+              "NEXT 3 ACTIONS",
+              "VOTE: APPROVE or REVISE",
               "Be specific, practical, and concise. Do not pretend work has already been completed.",
             ].join("\n"),
           });
