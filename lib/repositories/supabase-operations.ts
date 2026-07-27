@@ -1,12 +1,36 @@
-import type {
-  MissionRecord,
-  MissionRepository,
-  TaskRecord,
-  TaskRepository,
-} from "./types";
-import { createSupabaseClient, type SupabaseClientLike } from "./supabase";
+import type { MissionRecord, MissionRepository, TaskRecord, TaskRepository } from "./types";
+import { getSupabaseRepositoryConfig } from "./supabase";
 
-function mapMission(row: Record<string, unknown>): MissionRecord {
+type Row = Record<string, unknown>;
+
+type RequestOptions = {
+  method?: "GET" | "POST" | "PATCH";
+  query?: string;
+  body?: Row;
+};
+
+async function supabaseRequest(table: string, options: RequestOptions = {}): Promise<Row[]> {
+  const { url, serviceRoleKey } = getSupabaseRepositoryConfig();
+  const response = await fetch(`${url}/rest/v1/${table}${options.query ? `?${options.query}` : ""}`, {
+    method: options.method ?? "GET",
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      "Content-Type": "application/json",
+      Prefer: options.method === "POST" || options.method === "PATCH" ? "return=representation" : "",
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Supabase ${table} request failed (${response.status}): ${await response.text()}`);
+  }
+
+  return (await response.json()) as Row[];
+}
+
+function mapMission(row: Row): MissionRecord {
   return {
     id: String(row.id),
     title: String(row.title),
@@ -23,7 +47,7 @@ function mapMission(row: Record<string, unknown>): MissionRecord {
   };
 }
 
-function mapTask(row: Record<string, unknown>): TaskRecord {
+function mapTask(row: Row): TaskRecord {
   return {
     id: String(row.id),
     missionId: String(row.mission_id),
@@ -42,7 +66,7 @@ function mapTask(row: Record<string, unknown>): TaskRecord {
   };
 }
 
-function missionRow(record: Partial<MissionRecord>) {
+function missionRow(record: Partial<MissionRecord>): Row {
   return {
     ...(record.id !== undefined && { id: record.id }),
     ...(record.title !== undefined && { title: record.title }),
@@ -59,7 +83,7 @@ function missionRow(record: Partial<MissionRecord>) {
   };
 }
 
-function taskRow(record: Partial<TaskRecord>) {
+function taskRow(record: Partial<TaskRecord>): Row {
   return {
     ...(record.id !== undefined && { id: record.id }),
     ...(record.missionId !== undefined && { mission_id: record.missionId }),
@@ -78,67 +102,60 @@ function taskRow(record: Partial<TaskRecord>) {
   };
 }
 
-abstract class SupabaseRepositoryBase {
-  protected readonly client: SupabaseClientLike;
+export class SupabaseMissionRepository implements MissionRepository {
+  async create(record: MissionRecord) {
+    const [row] = await supabaseRequest("forge_missions", { method: "POST", body: missionRow(record) });
+    if (!row) throw new Error("Unable to create mission.");
+    return mapMission(row);
+  }
 
-  constructor(client?: SupabaseClientLike) {
-    this.client = client ?? createSupabaseClient({
-      url: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
-      serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  async get(id: string) {
+    const [row] = await supabaseRequest("forge_missions", { query: `id=eq.${encodeURIComponent(id)}&limit=1` });
+    return row ? mapMission(row) : null;
+  }
+
+  async list() {
+    const rows = await supabaseRequest("forge_missions", { query: "select=*&order=updated_at.desc" });
+    return rows.map(mapMission);
+  }
+
+  async update(id: string, update: Partial<MissionRecord>) {
+    const [row] = await supabaseRequest("forge_missions", {
+      method: "PATCH",
+      query: `id=eq.${encodeURIComponent(id)}`,
+      body: missionRow(update),
     });
-  }
-
-  protected unwrap<T>(result: { data: T | null; error: unknown }, fallback: string): T {
-    if (result.error) throw new Error(`${fallback}: ${String(result.error)}`);
-    if (result.data === null) throw new Error(fallback);
-    return result.data;
+    if (!row) throw new Error("Mission not found.");
+    return mapMission(row);
   }
 }
 
-export class SupabaseMissionRepository extends SupabaseRepositoryBase implements MissionRepository {
-  async create(record: MissionRecord): Promise<MissionRecord> {
-    const result = await this.client.from("forge_missions").insert(missionRow(record)).select().single();
-    return mapMission(this.unwrap(result, "Unable to create mission") as Record<string, unknown>);
+export class SupabaseTaskRepository implements TaskRepository {
+  async create(record: TaskRecord) {
+    const [row] = await supabaseRequest("forge_tasks", { method: "POST", body: taskRow(record) });
+    if (!row) throw new Error("Unable to create task.");
+    return mapTask(row);
   }
 
-  async get(id: string): Promise<MissionRecord | null> {
-    const result = await this.client.from("forge_missions").select("*").eq("id", id).maybeSingle();
-    if (result.error) throw new Error(`Unable to load mission: ${String(result.error)}`);
-    return result.data ? mapMission(result.data as Record<string, unknown>) : null;
+  async get(id: string) {
+    const [row] = await supabaseRequest("forge_tasks", { query: `id=eq.${encodeURIComponent(id)}&limit=1` });
+    return row ? mapTask(row) : null;
   }
 
-  async list(): Promise<MissionRecord[]> {
-    const result = await this.client.from("forge_missions").select("*");
-    const rows = this.unwrap(result, "Unable to list missions") as Record<string, unknown>[];
-    return rows.map(mapMission).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  async listByMission(missionId: string) {
+    const rows = await supabaseRequest("forge_tasks", {
+      query: `mission_id=eq.${encodeURIComponent(missionId)}&order=created_at.asc`,
+    });
+    return rows.map(mapTask);
   }
 
-  async update(id: string, update: Partial<MissionRecord>): Promise<MissionRecord> {
-    const result = await this.client.from("forge_missions").update(missionRow(update)).eq("id", id).select().single();
-    return mapMission(this.unwrap(result, "Unable to update mission") as Record<string, unknown>);
-  }
-}
-
-export class SupabaseTaskRepository extends SupabaseRepositoryBase implements TaskRepository {
-  async create(record: TaskRecord): Promise<TaskRecord> {
-    const result = await this.client.from("forge_tasks").insert(taskRow(record)).select().single();
-    return mapTask(this.unwrap(result, "Unable to create task") as Record<string, unknown>);
-  }
-
-  async get(id: string): Promise<TaskRecord | null> {
-    const result = await this.client.from("forge_tasks").select("*").eq("id", id).maybeSingle();
-    if (result.error) throw new Error(`Unable to load task: ${String(result.error)}`);
-    return result.data ? mapTask(result.data as Record<string, unknown>) : null;
-  }
-
-  async listByMission(missionId: string): Promise<TaskRecord[]> {
-    const result = await this.client.from("forge_tasks").select("*").eq("mission_id", missionId);
-    const rows = this.unwrap(result, "Unable to list tasks") as Record<string, unknown>[];
-    return rows.map(mapTask).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  }
-
-  async update(id: string, update: Partial<TaskRecord>): Promise<TaskRecord> {
-    const result = await this.client.from("forge_tasks").update(taskRow(update)).eq("id", id).select().single();
-    return mapTask(this.unwrap(result, "Unable to update task") as Record<string, unknown>);
+  async update(id: string, update: Partial<TaskRecord>) {
+    const [row] = await supabaseRequest("forge_tasks", {
+      method: "PATCH",
+      query: `id=eq.${encodeURIComponent(id)}`,
+      body: taskRow(update),
+    });
+    if (!row) throw new Error("Task not found.");
+    return mapTask(row);
   }
 }
