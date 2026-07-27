@@ -3,6 +3,37 @@ export interface SupabaseRepositoryConfig {
   serviceRoleKey?: string;
 }
 
+export interface SupabaseQueryResult<T = unknown> {
+  data: T | null;
+  error: unknown;
+}
+
+export interface SupabaseSingleQuery<T = unknown> {
+  single: () => Promise<SupabaseQueryResult<T>>;
+  maybeSingle: () => Promise<SupabaseQueryResult<T>>;
+}
+
+export interface SupabaseSelectQuery<T = unknown>
+  extends PromiseLike<SupabaseQueryResult<T>> {
+  eq: (column: string, value: string) => SupabaseSelectQuery<T> & SupabaseSingleQuery<T>;
+  single: () => Promise<SupabaseQueryResult<T>>;
+  maybeSingle: () => Promise<SupabaseQueryResult<T>>;
+}
+
+export interface SupabaseClientLike {
+  from: (table: string) => {
+    insert: (record: unknown) => {
+      select: (columns?: string) => SupabaseSingleQuery<unknown>;
+    };
+    select: (columns?: string) => SupabaseSelectQuery<unknown>;
+    update: (record: unknown) => {
+      eq: (column: string, value: string) => {
+        select: (columns?: string) => SupabaseSingleQuery<unknown>;
+      };
+    };
+  };
+}
+
 export function isSupabaseConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
   return Boolean(
     (env.SUPABASE_URL || env.NEXT_PUBLIC_SUPABASE_URL) &&
