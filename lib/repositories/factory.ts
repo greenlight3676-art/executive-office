@@ -1,6 +1,11 @@
-import { createApprovalStore } from "@/lib/approvals/store";
 import { InMemoryApprovalStore } from "@/lib/approvals/in-memory-store";
-import { InMemoryConversationRepository, InMemoryMemoryRepository, InMemoryMessageRepository, InMemoryMissionRepository, InMemoryTaskRepository } from "./in-memory";
+import {
+  InMemoryConversationRepository,
+  InMemoryMemoryRepository,
+  InMemoryMessageRepository,
+  InMemoryMissionRepository,
+  InMemoryTaskRepository,
+} from "./in-memory";
 import { createSupabaseRepositories } from "./supabase-adapter";
 import { createSupabaseClient } from "./supabase";
 
@@ -9,16 +14,20 @@ export interface PersistenceFactoryOptions {
   environment?: string;
 }
 
+function getSupabaseEnvironment() {
+  return {
+    supabaseUrl: process.env.SUPABASE_URL ?? process.env.NEXT_PUBLIC_SUPABASE_URL,
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
+  };
+}
+
 export function createPersistenceRepositories(options: PersistenceFactoryOptions = {}) {
   const allowMemory = options.allowMemory ?? process.env.NODE_ENV === "test";
   const environment = options.environment ?? process.env.NODE_ENV ?? "development";
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const { supabaseUrl, serviceRoleKey } = getSupabaseEnvironment();
 
-  if (environment !== "test" && !allowMemory) {
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error("Missing Supabase configuration. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
-    }
+  if (environment !== "test" && !allowMemory && (!supabaseUrl || !serviceRoleKey)) {
+    throw new Error("Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
   }
 
   if (environment === "test" || allowMemory) {
@@ -41,17 +50,10 @@ export function createPersistenceRepositories(options: PersistenceFactoryOptions
 export function createApprovalStore(options: PersistenceFactoryOptions = {}) {
   const allowMemory = options.allowMemory ?? process.env.NODE_ENV === "test";
   const environment = options.environment ?? process.env.NODE_ENV ?? "development";
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const { supabaseUrl, serviceRoleKey } = getSupabaseEnvironment();
 
-  if (environment !== "test" && !allowMemory) {
-    if (!supabaseUrl || !serviceRoleKey) {
-      throw new Error("Missing Supabase configuration. Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
-    }
-  }
-
-  if (environment === "test" || allowMemory) {
-    return new InMemoryApprovalStore();
+  if (environment !== "test" && !allowMemory && (!supabaseUrl || !serviceRoleKey)) {
+    throw new Error("Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
   }
 
   return new InMemoryApprovalStore();
