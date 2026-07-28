@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { MissionService } from "@/lib/operations/service";
-import { InMemoryMissionRepository, InMemoryTaskRepository } from "@/lib/repositories/in-memory";
+import { forgeRuntime } from "@/lib/operations/runtime";
 
-const missionService = new MissionService({
-  missions: new InMemoryMissionRepository(),
-  tasks: new InMemoryTaskRepository(),
-});
+const { missionService } = forgeRuntime;
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
