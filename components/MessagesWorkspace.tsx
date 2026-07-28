@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { authFetch } from "@/lib/auth/browser";
+import type { ProviderName } from "@/lib/ai/providers";
 
 type ExecutiveProfile = {
   id: string;
@@ -12,7 +13,7 @@ type ExecutiveProfile = {
   motto: string;
   communicationStyle: string;
   accent: string;
-  activeProvider: "openai" | "anthropic";
+  activeProvider: ProviderName;
 };
 
 type Conversation = {

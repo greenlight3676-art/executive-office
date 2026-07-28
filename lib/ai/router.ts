@@ -1,6 +1,7 @@
 import { getExecutiveAgent, getExecutiveRegistry } from "@/lib/agents/registry";
 import { getProviderConfig } from "./providers/config";
 import { createAnthropicAdapter } from "./providers/anthropic";
+import { createGeminiAdapter } from "./providers/gemini";
 import { createOpenAIAdapter } from "./providers/openai";
 import { ProviderAdapter, ProviderRequest, ProviderResponse } from "./providers/types";
 import { ProviderError } from "./errors";
@@ -13,6 +14,9 @@ export function resolveExecutiveProvider(executive: string, config: ReturnType<t
         ? createAnthropicAdapter(config.anthropic)
         : createOpenAIAdapter(config.openai);
     case "orynth":
+      return config.gemini.apiKey
+        ? createGeminiAdapter(config.gemini)
+        : createOpenAIAdapter(config.openai);
     case "vyreel":
     case "kavro":
     default:
@@ -31,7 +35,7 @@ export async function sendExecutiveRequest(
     return await primaryProvider.send(request);
   } catch (error) {
     const canFallbackToOpenAI =
-      primaryProvider.name === "anthropic" &&
+      primaryProvider.name !== "openai" &&
       Boolean(config.openai.apiKey) &&
       error instanceof ProviderError;
 

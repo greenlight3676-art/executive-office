@@ -8,6 +8,7 @@ export async function GET() {
     return NextResponse.json({
       openai: { configured: Boolean(config.openai.apiKey) },
       anthropic: { configured: Boolean(config.anthropic.apiKey) },
+      gemini: { configured: Boolean(config.gemini.apiKey) },
     });
   } catch {
     return NextResponse.json({ error: "Health check failed." }, { status: 500 });

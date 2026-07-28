@@ -2,6 +2,7 @@ import { createCostPolicy, enforceCostPolicy } from "../cost-policy";
 import { validateBoardroomPayload, validateChatPayload } from "../validation";
 import { createOpenAIAdapter } from "../providers/openai";
 import { createAnthropicAdapter } from "../providers/anthropic";
+import { createGeminiAdapter } from "../providers/gemini";
 import { resolveExecutiveProvider, sendExecutiveRequest } from "../router";
 import { getProviderConfig } from "../providers/config";
 import { ConfigurationError, ValidationError } from "../errors";
@@ -34,9 +35,14 @@ jest.mock("@anthropic-ai/sdk", () => ({
 
 describe("backend foundation", () => {
   it("routes executives to the expected provider", () => {
-    const config = getProviderConfig(process.env);
+    const config = getProviderConfig({ OPENAI_API_KEY: "openai", ANTHROPIC_API_KEY: "anthropic" });
     expect(resolveExecutiveProvider("orynth", config).name).toBe("openai");
     expect(resolveExecutiveProvider("brayko", config).name).toBe("anthropic");
+  });
+
+  it("uses Gemini for Orynth when the third model lane is configured", () => {
+    const config = getProviderConfig({ OPENAI_API_KEY: "openai", GEMINI_API_KEY: "gemini" });
+    expect(resolveExecutiveProvider("orynth", config).name).toBe("gemini");
   });
 
   it("keeps Claude executives available through OpenAI when Claude is not configured", () => {
@@ -83,6 +89,7 @@ describe("backend foundation", () => {
     const config = getProviderConfig({ OPENAI_API_KEY: "openai-only" });
     expect(config.openai.apiKey).toBe("openai-only");
     expect(config.anthropic.apiKey).toBe("");
+    expect(config.gemini.apiKey).toBe("");
 
     const anthropic = createAnthropicAdapter(config.anthropic);
     await expect(
@@ -112,5 +119,29 @@ describe("backend foundation", () => {
     const claudeResponse = await anthropic.send({ message: "hello", executive: "brayko", mode: "default" });
     expect(claudeResponse.provider).toBe("anthropic");
     expect(claudeResponse.text).toBe("Claude response");
+  });
+
+  it("normalizes Gemini responses", async () => {
+    const fetchMock = jest.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: "Gemini response" }] } }],
+        usageMetadata: { promptTokenCount: 7, candidatesTokenCount: 3 },
+      }),
+    } as Response);
+
+    const gemini = createGeminiAdapter({
+      apiKey: "test-gemini-key",
+      defaultModel: "gemini-2.5-flash",
+      deepModel: "gemini-2.5-pro",
+      timeoutMs: 15000,
+    });
+
+    const response = await gemini.send({ message: "hello", executive: "orynth", mode: "default" });
+    expect(response.provider).toBe("gemini");
+    expect(response.text).toBe("Gemini response");
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("gemini-2.5-flash"), expect.any(Object));
+
+    fetchMock.mockRestore();
   });
 });

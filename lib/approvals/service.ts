@@ -184,4 +184,60 @@ export class ApprovalService {
       executionStatus: "blocked",
     };
   }
+
+  async markExecuted(id: string, actor: string, metadata: Record<string, unknown> = {}) {
+    const request = await this.store.get(id);
+    if (!request) {
+      throw new Error("Approval request not found.");
+    }
+    if (request.status !== "approved" || request.executionStatus !== "ready") {
+      throw new Error("Approval request is not ready for execution.");
+    }
+
+    const updated = await this.store.update(id, {
+      status: "executed",
+      executionStatus: "executed",
+    });
+
+    await this.store.appendEvent({
+      id: randomUUID(),
+      approvalRequestId: id,
+      eventType: "executed",
+      timestamp: new Date().toISOString(),
+      actorId: actor,
+      previousStatus: request.status,
+      newStatus: "executed",
+      safeMetadata: metadata,
+    });
+
+    return updated;
+  }
+
+  async markFailed(id: string, actor: string, reason: string) {
+    const request = await this.store.get(id);
+    if (!request) {
+      throw new Error("Approval request not found.");
+    }
+    if (request.status !== "approved" || request.executionStatus !== "ready") {
+      throw new Error("Approval request is not ready for execution.");
+    }
+
+    const updated = await this.store.update(id, {
+      status: "failed",
+      executionStatus: "failed",
+    });
+
+    await this.store.appendEvent({
+      id: randomUUID(),
+      approvalRequestId: id,
+      eventType: "failed",
+      timestamp: new Date().toISOString(),
+      actorId: actor,
+      previousStatus: request.status,
+      newStatus: "failed",
+      safeMetadata: { reason },
+    });
+
+    return updated;
+  }
 }

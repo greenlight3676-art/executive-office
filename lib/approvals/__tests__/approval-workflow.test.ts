@@ -73,4 +73,24 @@ describe("approval workflow", () => {
     await service.approve(created.id, "tj", "Approved");
     await expect(service.reject(created.id, "tj", "Too late")).rejects.toThrow(/not pending/);
   });
+
+  it("marks approved requests as executed", async () => {
+    const store = new InMemoryApprovalStore();
+    const service = new ApprovalService(store);
+
+    const created = await service.createApprovalRequest({
+      executiveId: "orynth",
+      action: "send-external-message",
+      reason: "Send a customer update",
+      riskLevel: "medium",
+    });
+
+    await service.approve(created.id, "tj", "Approved");
+    const executed = await service.markExecuted(created.id, "tj", { executor: "test" });
+    const events = await service.listApprovalEvents(created.id);
+
+    expect(executed.status).toBe("executed");
+    expect(executed.executionStatus).toBe("executed");
+    expect(events.some((event) => event.eventType === "executed")).toBe(true);
+  });
 });

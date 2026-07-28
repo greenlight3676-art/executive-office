@@ -32,6 +32,14 @@ type SandboxResult = {
   sandboxId?: string;
 };
 
+type ComposioStatus = {
+  ok?: boolean;
+  toolCount?: number;
+  checkedToolkits?: string[];
+  tools?: Array<{ slug: string; name: string; toolkit?: string }>;
+  error?: string;
+};
+
 const categoryLabels: Record<string, string> = {
   platform: "Platform",
   ai: "AI",
@@ -64,7 +72,9 @@ export function IntegrationsPanel() {
   const [summary, setSummary] = useState<IntegrationsPayload["summary"]>();
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [sandboxResult, setSandboxResult] = useState<SandboxResult | null>(null);
+  const [composioStatus, setComposioStatus] = useState<ComposioStatus | null>(null);
   const [isRunningSandbox, setIsRunningSandbox] = useState(false);
+  const [isCheckingComposio, setIsCheckingComposio] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -103,6 +113,25 @@ export function IntegrationsPanel() {
       setError(sandboxError instanceof Error ? sandboxError.message : "Unable to run E2B sandbox check.");
     } finally {
       setIsRunningSandbox(false);
+    }
+  }
+
+  async function checkComposio() {
+    if (isCheckingComposio) return;
+
+    setIsCheckingComposio(true);
+    setComposioStatus(null);
+    setError("");
+
+    try {
+      const response = await authFetch("/api/composio/status", { cache: "no-store" });
+      const payload = (await response.json()) as { status?: ComposioStatus; error?: string };
+      if (!response.ok && !payload.status) throw new Error(payload.error ?? "Unable to check Composio.");
+      setComposioStatus(payload.status ?? null);
+    } catch (composioError) {
+      setError(composioError instanceof Error ? composioError.message : "Unable to check Composio.");
+    } finally {
+      setIsCheckingComposio(false);
     }
   }
 
@@ -248,6 +277,53 @@ export function IntegrationsPanel() {
                         <p className="text-zinc-500">Time</p>
                         <p className="text-zinc-200">{sandboxResult.durationMs ?? 0}ms</p>
                       </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
+              {integration.id === "composio" ? (
+                <div className="mt-3 rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-300">Tool router</p>
+                      <p className="mt-1 text-sm text-zinc-300">
+                        Checks Forge can see the Composio tool catalog for connected apps.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void checkComposio()}
+                      disabled={integration.status !== "connected" || isCheckingComposio}
+                      className="rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-xs font-medium text-emerald-100 transition hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isCheckingComposio ? "Checking..." : "Check tools"}
+                    </button>
+                  </div>
+
+                  {composioStatus ? (
+                    <div className="mt-3 space-y-2 text-xs">
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <div className="rounded-lg bg-black/30 p-2">
+                          <p className="text-zinc-500">Status</p>
+                          <p className={composioStatus.ok ? "text-emerald-200" : "text-rose-200"}>
+                            {composioStatus.ok ? "Ready" : "Check failed"}
+                          </p>
+                        </div>
+                        <div className="rounded-lg bg-black/30 p-2">
+                          <p className="text-zinc-500">Tools found</p>
+                          <p className="text-zinc-200">{composioStatus.toolCount ?? 0}</p>
+                        </div>
+                        <div className="rounded-lg bg-black/30 p-2">
+                          <p className="text-zinc-500">Toolkits</p>
+                          <p className="truncate text-zinc-200">{composioStatus.checkedToolkits?.length ?? 0} checked</p>
+                        </div>
+                      </div>
+                      {composioStatus.tools?.length ? (
+                        <p className="truncate text-zinc-300">
+                          {composioStatus.tools.slice(0, 4).map((tool) => tool.slug).join(", ")}
+                        </p>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
