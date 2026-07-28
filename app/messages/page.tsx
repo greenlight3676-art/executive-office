@@ -18,25 +18,18 @@ export default function MessagesPage() {
   }));
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.16),_transparent_30%),radial-gradient(circle_at_top_right,_rgba(217,70,239,0.18),_transparent_28%),linear-gradient(135deg,_#050816_0%,_#0b1020_45%,_#04070d_100%)] px-4 py-5 text-zinc-100 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-zinc-950 px-4 py-5 text-zinc-100 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
-        <header className="mb-5 flex flex-col gap-4 rounded-[28px] border border-white/10 bg-white/[0.06] p-5 backdrop-blur-xl sm:flex-row sm:items-end sm:justify-between">
+        <header className="mb-5 flex flex-col gap-4 rounded-2xl border border-white/10 bg-zinc-900 p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="flex items-center gap-2 text-sm uppercase tracking-[0.3em] text-cyan-300">
-              <span>FORGE</span>
-              <span className="text-zinc-700">/</span>
-              <span>Messages</span>
-            </div>
-            <h1 className="mt-2 text-3xl font-semibold">Your executive inbox.</h1>
-            <p className="mt-2 max-w-2xl text-sm text-zinc-500">
-              Every executive has a distinct brain, saved conversations, and memory that carries into the next briefing.
-            </p>
+            <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">Forge Phase 1</p>
+            <h1 className="mt-2 text-2xl font-semibold">Messages test</h1>
           </div>
           <Link
             href="/"
-            className="rounded-2xl border border-white/10 bg-white/5 px-4 py-2.5 text-center text-sm text-zinc-300 transition hover:bg-white/10"
+            className="rounded-xl border border-white/10 bg-black/30 px-4 py-2.5 text-center text-sm text-zinc-300 transition hover:bg-white/10"
           >
-            ← Command Center
+            Back
           </Link>
         </header>
 

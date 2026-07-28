@@ -101,9 +101,8 @@ export function BoardroomPanel() {
     <section className="rounded-[28px] border border-white/10 bg-zinc-950/60 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.35)] backdrop-blur-xl">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm uppercase tracking-[0.25em] text-fuchsia-300">Live Board Room</p>
-          <h2 className="mt-2 text-2xl font-semibold">Five executives. One decision.</h2>
-          <p className="mt-2 text-sm text-zinc-400">Give Forge one mission. Every executive reviews it from their specialty and votes.</p>
+          <p className="text-sm uppercase tracking-[0.25em] text-zinc-500">Board Room Test</p>
+          <h2 className="mt-2 text-2xl font-semibold">Run all executives</h2>
         </div>
         {decision ? (
           <div className={`rounded-2xl border px-4 py-3 text-sm ${decision.outcome === "approved" ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" : decision.outcome === "revise" ? "border-amber-400/20 bg-amber-400/10 text-amber-200" : "border-rose-400/20 bg-rose-400/10 text-rose-200"}`}>
@@ -119,7 +118,7 @@ export function BoardroomPanel() {
           value={mission}
           onChange={(event) => setMission(event.target.value)}
           rows={3}
-          placeholder="Example: Finish Forge's first usable version with working missions, executive chat, and a clean mobile dashboard."
+          placeholder="Type a real mission to test the boardroom..."
           className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-sm outline-none placeholder:text-zinc-600 focus:border-fuchsia-400/40"
         />
         <button
@@ -159,15 +158,15 @@ export function BoardroomPanel() {
           ))}
         </div>
       ) : (
-        <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm text-zinc-500">The board is waiting for its first mission.</div>
+        <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm text-zinc-500">No boardroom run yet.</div>
       )}
 
       {synthesis ? (
         <div className="mt-5 rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/10 via-white/[0.04] to-fuchsia-400/10 p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">Chief of Staff synthesis</p>
-              <h3 className="mt-2 text-xl font-semibold">One plan from the full room.</h3>
+              <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">Synthesis</p>
+              <h3 className="mt-2 text-xl font-semibold">Board output</h3>
             </div>
             <button
               type="button"
