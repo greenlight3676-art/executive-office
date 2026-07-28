@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getExecutiveAgent } from "@/lib/agents/registry";
 import type { ExecutiveId } from "@/lib/agents/types";
+import { requireApiSession } from "@/lib/auth/api";
 import { conversationStore } from "@/lib/conversations/store";
 
 function readExecutiveId(value: unknown): ExecutiveId {
@@ -14,6 +15,9 @@ function readExecutiveId(value: unknown): ExecutiveId {
 }
 
 export async function GET(request: NextRequest) {
+  const authError = await requireApiSession(request);
+  if (authError) return authError;
+
   try {
     const rawExecutive = request.nextUrl.searchParams.get("executiveId");
     const executiveId = rawExecutive ? readExecutiveId(rawExecutive) : undefined;
@@ -33,6 +37,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const authError = await requireApiSession(request);
+  if (authError) return authError;
+
   try {
     const payload = await request.json();
     const executiveId = readExecutiveId(payload?.executiveId);

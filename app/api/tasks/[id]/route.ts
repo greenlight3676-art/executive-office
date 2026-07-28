@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiSession } from "@/lib/auth/api";
 import { forgeRuntime } from "@/lib/operations/runtime";
 
 const { missionService } = forgeRuntime;
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const authError = await requireApiSession(request);
+  if (authError) return authError;
+
   try {
     const { id } = await params;
     const payload = await request.json();

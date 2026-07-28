@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { authFetch } from "@/lib/auth/browser";
 
 type ExecutiveProfile = {
   id: string;
@@ -74,7 +75,7 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
       setError("");
 
       try {
-        const response = await fetch(
+        const response = await authFetch(
           `/api/conversations?executiveId=${encodeURIComponent(selectedExecutiveId)}`,
           { cache: "no-store" },
         );
@@ -104,7 +105,7 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
     setError("");
 
     try {
-      const response = await fetch(`/api/conversations/${conversation.id}`, {
+      const response = await authFetch(`/api/conversations/${conversation.id}`, {
         cache: "no-store",
       });
       const payload = await response.json();
@@ -144,7 +145,7 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
     setError("");
 
     try {
-      const response = await fetch("/api/ai/chat", {
+      const response = await authFetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

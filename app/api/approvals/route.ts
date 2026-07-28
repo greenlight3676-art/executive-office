@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { approvalService } from "@/lib/approvals/store";
+import { requireApiSession } from "@/lib/auth/api";
 
 export async function POST(request: NextRequest) {
+  const authError = await requireApiSession(request);
+  if (authError) return authError;
+
   try {
     const payload = await request.json();
     const { executiveId, action, reason, riskLevel, estimatedCost, projectId, conversationId, payloadSummary } = payload ?? {};
@@ -28,6 +32,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  const authError = await requireApiSession(request);
+  if (authError) return authError;
+
   const { searchParams } = new URL(request.url);
   const filters = {
     status: (searchParams.get("status") as "pending" | "approved" | "rejected" | "expired" | "cancelled" | "executed" | "failed" | null | undefined) ?? undefined,

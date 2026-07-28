@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authFetch } from "@/lib/auth/browser";
 
 type ApprovalRequest = {
   id: string;
@@ -25,7 +26,7 @@ export function ApprovalInbox() {
     setError("");
 
     try {
-      const response = await fetch("/api/approvals", { cache: "no-store" });
+      const response = await authFetch("/api/approvals", { cache: "no-store" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Unable to load approvals.");
       setRequests(Array.isArray(payload.approvalRequests) ? payload.approvalRequests : []);
@@ -44,7 +45,7 @@ export function ApprovalInbox() {
     setError("");
 
     try {
-      const response = await fetch(`/api/approvals/${id}`, {
+      const response = await authFetch(`/api/approvals/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

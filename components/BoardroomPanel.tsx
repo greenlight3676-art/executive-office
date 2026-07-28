@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { authFetch } from "@/lib/auth/browser";
 
 type BoardResponse = {
   executive: string;
@@ -42,7 +43,7 @@ export function BoardroomPanel() {
     setSavedMissionId("");
 
     try {
-      const response = await fetch("/api/boardroom", {
+      const response = await authFetch("/api/boardroom", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mission: cleanMission }),
@@ -70,7 +71,7 @@ export function BoardroomPanel() {
         mission.trim().length > 72
           ? `${mission.trim().slice(0, 69).trimEnd()}...`
           : mission.trim();
-      const response = await fetch("/api/missions", {
+      const response = await authFetch("/api/missions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

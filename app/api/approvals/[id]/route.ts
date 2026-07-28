@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { approvalService } from "@/lib/approvals/store";
+import { requireApiSession } from "@/lib/auth/api";
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const authError = await requireApiSession(request);
+  if (authError) return authError;
+
   const { id } = await params;
   const requestData = await approvalService.getApprovalRequest(id);
 
@@ -14,6 +18,9 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
 }
 
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const authError = await requireApiSession(request);
+  if (authError) return authError;
+
   try {
     const { id } = await params;
     const payload = await request.json();

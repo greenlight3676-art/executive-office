@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { authFetch } from "@/lib/auth/browser";
 
 type Mission = {
   id: string;
@@ -78,7 +79,7 @@ export function MissionCenter() {
     setError("");
 
     try {
-      const response = await fetch("/api/missions", { cache: "no-store" });
+      const response = await authFetch("/api/missions", { cache: "no-store" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Unable to load missions.");
       const nextMissions = Array.isArray(payload.missions) ? payload.missions : [];
@@ -100,7 +101,7 @@ export function MissionCenter() {
     setError("");
 
     try {
-      const response = await fetch(`/api/missions/${missionId}/tasks`, { cache: "no-store" });
+      const response = await authFetch(`/api/missions/${missionId}/tasks`, { cache: "no-store" });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Unable to load tasks.");
       setTasks(Array.isArray(payload.tasks) ? payload.tasks : []);
@@ -126,7 +127,7 @@ export function MissionCenter() {
     setError("");
 
     try {
-      const response = await fetch("/api/missions", {
+      const response = await authFetch("/api/missions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -160,7 +161,7 @@ export function MissionCenter() {
     setError("");
 
     try {
-      const response = await fetch(`/api/missions/${selectedMission.id}/tasks`, {
+      const response = await authFetch(`/api/missions/${selectedMission.id}/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -187,7 +188,7 @@ export function MissionCenter() {
     setError("");
 
     try {
-      const response = await fetch(`/api/missions/${selectedMission.id}`, {
+      const response = await authFetch(`/api/missions/${selectedMission.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
@@ -206,7 +207,7 @@ export function MissionCenter() {
     setError("");
 
     try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
+      const response = await authFetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),

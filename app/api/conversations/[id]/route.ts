@@ -1,10 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireApiSession } from "@/lib/auth/api";
 import { conversationStore } from "@/lib/conversations/store";
 
 export async function GET(
-  _request: Request,
+  request: NextRequest,
   context: RouteContext<"/api/conversations/[id]">,
 ) {
+  const authError = await requireApiSession(request);
+  if (authError) return authError;
+
   try {
     const { id } = await context.params;
     const [conversation, messages] = await Promise.all([

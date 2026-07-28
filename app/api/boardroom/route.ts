@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getProviderConfig } from "@/lib/ai/providers/config";
 import { listExecutiveAgents, sendExecutiveRequest } from "@/lib/ai/router";
 import { createCostPolicy, enforceCostPolicy } from "@/lib/ai/cost-policy";
+import { requireApiSession } from "@/lib/auth/api";
 import { conversationStore } from "@/lib/conversations/store";
 
 export async function POST(request: NextRequest) {
+  const authError = await requireApiSession(request);
+  if (authError) return authError;
+
   try {
     const body = await request.json();
     const mission =

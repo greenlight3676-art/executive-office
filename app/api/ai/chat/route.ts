@@ -6,6 +6,7 @@ import { createCostPolicy, enforceCostPolicy } from "@/lib/ai/cost-policy";
 import { loadExecutiveContext, sendExecutiveRequest } from "@/lib/ai/router";
 import { requiresApproval } from "@/lib/security/permissions";
 import { approvalService } from "@/lib/approvals/store";
+import { requireApiSession } from "@/lib/auth/api";
 import { conversationStore } from "@/lib/conversations/store";
 import {
   buildExecutivePrompt,
@@ -14,6 +15,9 @@ import {
 } from "@/lib/conversations/context";
 
 export async function POST(request: NextRequest) {
+  const authError = await requireApiSession(request);
+  if (authError) return authError;
+
   try {
     const payload = await request.json();
     const validated = validateChatPayload({

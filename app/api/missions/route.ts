@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireApiSession } from "@/lib/auth/api";
 import { forgeRuntime } from "@/lib/operations/runtime";
 
 const { missionService } = forgeRuntime;
 
 export async function POST(request: NextRequest) {
+  const authError = await requireApiSession(request);
+  if (authError) return authError;
+
   try {
     const payload = await request.json();
 
@@ -32,7 +36,10 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authError = await requireApiSession(request);
+  if (authError) return authError;
+
   const missions = await missionService.listMissions();
   return NextResponse.json({ success: true, missions });
 }
