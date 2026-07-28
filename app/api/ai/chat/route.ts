@@ -8,6 +8,7 @@ import { requiresApproval } from "@/lib/security/permissions";
 import { approvalService } from "@/lib/approvals/store";
 import { requireApiSession } from "@/lib/auth/api";
 import { conversationStore } from "@/lib/conversations/store";
+import { buildToolRouterPrompt, detectToolAction } from "@/lib/tools/router";
 import {
   buildExecutivePrompt,
   createConversationTitle,
@@ -57,6 +58,61 @@ export async function POST(request: NextRequest) {
       content: validated.message,
     });
 
+    const toolProposal = detectToolAction(validated.message, executive.id);
+    if (toolProposal?.risk === "unsupported") {
+      const assistantMessage = await conversationStore.createMessage({
+        conversationId: conversation.id,
+        role: "assistant",
+        content: `I caught a tool request, but I blocked it: ${toolProposal.reason}`,
+        metadata: { toolProposal },
+      });
+
+      return NextResponse.json({
+        success: true,
+        conversation,
+        userMessage,
+        message: assistantMessage,
+        toolProposal,
+        executive: {
+          id: executive.id,
+          name: executive.name,
+          role: executive.role,
+        },
+      });
+    }
+
+    if (toolProposal?.risk === "approval_required") {
+      const approvalRequest = await approvalService.createApprovalRequest({
+        executiveId: executive.id,
+        action: toolProposal.action,
+        reason: toolProposal.reason,
+        riskLevel: toolProposal.action.includes("production") ? "high" : "medium",
+        conversationId: conversation.id,
+        payloadSummary: toolProposal.payloadSummary,
+      });
+
+      const assistantMessage = await conversationStore.createMessage({
+        conversationId: conversation.id,
+        role: "assistant",
+        content: `I prepared an approval request for ${toolProposal.tool}. TJ must approve “${toolProposal.action}” before Forge runs it.`,
+        metadata: { approvalRequestId: approvalRequest.id, toolProposal },
+      });
+
+      return NextResponse.json({
+        success: true,
+        approvalRequest,
+        conversation,
+        userMessage,
+        message: assistantMessage,
+        toolProposal,
+        executive: {
+          id: executive.id,
+          name: executive.name,
+          role: executive.role,
+        },
+      });
+    }
+
     const approvalAction = detectApprovalAction(validated.message);
     if (approvalAction && requiresApproval(approvalAction)) {
       const approvalRequest = await approvalService.createApprovalRequest({
@@ -97,7 +153,9 @@ export async function POST(request: NextRequest) {
     const response = await sendExecutiveRequest(validated.executive, config, {
       message: buildExecutivePrompt({
         executive,
-        message: validated.message,
+        message: toolProposal
+          ? `${validated.message}\n\n${buildToolRouterPrompt(toolProposal)}`
+          : validated.message,
         history,
         memories,
       }),
@@ -128,6 +186,7 @@ export async function POST(request: NextRequest) {
         model: response.model,
         inputTokens: response.inputTokens,
         outputTokens: response.outputTokens,
+        toolProposal,
       },
     });
 
