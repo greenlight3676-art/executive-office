@@ -18,6 +18,8 @@ import {
   createConversationTitle,
   shouldSaveLongTermMemory,
 } from "@/lib/conversations/context";
+import { detectMissionIntent } from "@/lib/missions/planner";
+import { forgeRuntime } from "@/lib/operations/runtime";
 
 export async function POST(request: NextRequest) {
   const authError = await requireApiSession(request);
@@ -63,6 +65,7 @@ export async function POST(request: NextRequest) {
     });
 
     const toolProposal = detectToolAction(validated.message, executive.id);
+    const missionIntent = detectMissionIntent(validated.message);
     if (toolProposal?.risk === "unsupported") {
       const assistantMessage = await conversationStore.createMessage({
         conversationId: conversation.id,
@@ -193,10 +196,30 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const missionResult = missionIntent
+      ? await forgeRuntime.missionService.createMissionWithPlan({
+          title: missionIntent.title,
+          description: missionIntent.description,
+          projectId: "forge",
+          createdBy: executive.id,
+          assignedExecutives: missionIntent.assignedExecutives,
+          priority: missionIntent.priority,
+          status: "planned",
+          metadata: {
+            source: "chat",
+            conversationId: conversation.id,
+            userMessageId: userMessage.id,
+          },
+          intent: missionIntent,
+        })
+      : null;
+
     const assistantMessage = await conversationStore.createMessage({
       conversationId: conversation.id,
       role: "assistant",
-      content: response.text,
+      content: missionResult
+        ? `${response.text}\n\nMission created: ${missionResult.mission.title} (${missionResult.tasks.length} tasks assigned).`
+        : response.text,
       metadata: {
         provider: response.provider,
         model: response.model,
@@ -204,6 +227,14 @@ export async function POST(request: NextRequest) {
         outputTokens: response.outputTokens,
         toolProposal,
         toolResult,
+        mission: missionResult
+          ? {
+              id: missionResult.mission.id,
+              title: missionResult.mission.title,
+              status: missionResult.mission.status,
+              taskCount: missionResult.tasks.length,
+            }
+          : null,
       },
     });
 

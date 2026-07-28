@@ -52,6 +52,13 @@ type ToolResult = {
   error?: string;
 };
 
+type MissionResult = {
+  id: string;
+  title: string;
+  status: string;
+  taskCount: number;
+};
+
 type MessagesWorkspaceProps = {
   executives: ExecutiveProfile[];
 };
@@ -84,6 +91,21 @@ function getToolResult(message: Message): ToolResult | null {
     records: Array.isArray(result.records) ? result.records.filter(isToolResultRecord) : [],
     logId: typeof result.logId === "string" ? result.logId : undefined,
     error: typeof result.error === "string" ? result.error : undefined,
+  };
+}
+
+function getMissionResult(message: Message): MissionResult | null {
+  const value = message.metadata?.mission;
+  if (!value || typeof value !== "object") return null;
+
+  const mission = value as Partial<MissionResult>;
+  if (typeof mission.id !== "string" || typeof mission.title !== "string") return null;
+
+  return {
+    id: mission.id,
+    title: mission.title,
+    status: typeof mission.status === "string" ? mission.status : "active",
+    taskCount: typeof mission.taskCount === "number" ? mission.taskCount : 0,
   };
 }
 
@@ -147,6 +169,25 @@ function ToolResultCard({ result }: { result: ToolResult }) {
       <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-zinc-600">
         <span>{result.toolSlug}</span>
         {result.logId ? <span>Log {result.logId}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function MissionResultCard({ mission }: { mission: MissionResult }) {
+  return (
+    <div className="mt-3 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-fuchsia-200/70">Mission created</p>
+          <h3 className="mt-1 text-sm font-semibold text-fuchsia-50">{mission.title}</h3>
+          <p className="mt-1 text-xs text-fuchsia-100/70">
+            {mission.taskCount} tasks assigned across the executive team.
+          </p>
+        </div>
+        <span className="w-fit rounded-full border border-fuchsia-300/30 bg-black/20 px-2.5 py-1 text-[11px] text-fuchsia-100">
+          {mission.status}
+        </span>
       </div>
     </div>
   );
@@ -449,6 +490,7 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
           ) : (
             messages.map((message) => {
               const toolResult = getToolResult(message);
+              const missionResult = getMissionResult(message);
 
               return (
                 <article
@@ -464,6 +506,7 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
                   </div>
                   <div className="whitespace-pre-wrap">{message.content}</div>
                   {toolResult ? <ToolResultCard result={toolResult} /> : null}
+                  {missionResult ? <MissionResultCard mission={missionResult} /> : null}
                 </article>
               );
             })

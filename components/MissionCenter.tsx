@@ -64,6 +64,7 @@ export function MissionCenter() {
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
   const [assignedExecutive, setAssignedExecutive] = useState("orynth");
+  const [autoPlanMission, setAutoPlanMission] = useState(true);
   const [isCreatingMission, setIsCreatingMission] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,6 +74,18 @@ export function MissionCenter() {
     () => missions.find((mission) => mission.id === selectedMissionId) ?? missions[0],
     [missions, selectedMissionId],
   );
+
+  const taskSummary = useMemo(() => {
+    const total = tasks.length;
+    const completed = tasks.filter((task) => task.status === "completed").length;
+    const blocked = tasks.filter((task) => task.status === "blocked" || task.status === "waiting_approval").length;
+    return {
+      total,
+      completed,
+      blocked,
+      progress: total ? Math.round((completed / total) * 100) : 0,
+    };
+  }, [tasks]);
 
   async function loadMissions() {
     setIsLoading(true);
@@ -138,12 +151,14 @@ export function MissionCenter() {
           assignedExecutives: [assignedExecutive],
           priority: "medium",
           status: "planned",
+          autoPlan: autoPlanMission,
         }),
       });
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error ?? "Unable to create mission.");
       setMissions((current) => [payload.mission, ...current]);
       setSelectedMissionId(payload.mission.id);
+      setTasks(Array.isArray(payload.tasks) ? payload.tasks : []);
       setTitle("");
       setDescription("");
     } catch (createError) {
@@ -274,6 +289,15 @@ export function MissionCenter() {
           {isCreatingMission ? "Creating..." : "Create"}
         </button>
       </form>
+      <label className="mt-2 flex w-fit items-center gap-2 text-xs text-zinc-400">
+        <input
+          type="checkbox"
+          checked={autoPlanMission}
+          onChange={(event) => setAutoPlanMission(event.target.checked)}
+          className="h-4 w-4 rounded border-white/10 bg-black/30"
+        />
+        Auto-break down into executive tasks
+      </label>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-[320px_1fr]">
         <div className="max-h-96 space-y-2 overflow-y-auto">
@@ -322,6 +346,23 @@ export function MissionCenter() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                <div className="rounded-xl border border-white/10 bg-zinc-950 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">Progress</p>
+                  <p className="mt-1 text-lg font-semibold text-zinc-100">{taskSummary.progress}%</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-zinc-950 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">Tasks</p>
+                  <p className="mt-1 text-lg font-semibold text-zinc-100">{taskSummary.completed}/{taskSummary.total}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-zinc-950 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-600">Blockers</p>
+                  <p className={taskSummary.blocked ? "mt-1 text-lg font-semibold text-amber-200" : "mt-1 text-lg font-semibold text-emerald-200"}>
+                    {taskSummary.blocked}
+                  </p>
+                </div>
               </div>
 
               <form onSubmit={createTask} className="mt-4 grid gap-2 md:grid-cols-[1fr_1fr_140px_auto]">

@@ -96,4 +96,33 @@ describe("mission engine", () => {
 
     await expect(service.updateTask(task.id, { status: "completed" })).rejects.toThrow(/approval/i);
   });
+
+  it("creates an active mission with a deterministic executive task plan", async () => {
+    const service = new MissionService({
+      missions: new InMemoryMissionRepository(),
+      tasks: new InMemoryTaskRepository(),
+    });
+
+    const result = await service.createMissionWithPlan({
+      title: "Build Forge command center",
+      description: "Build a dashboard and launch flow",
+      projectId: "forge",
+      createdBy: "orynth",
+      assignedExecutives: ["orynth", "brayko", "lunexa", "vyreel"],
+      priority: "high",
+      status: "planned",
+      intent: {
+        title: "Build Forge command center",
+        description: "Build a dashboard and launch flow",
+        priority: "high",
+        assignedExecutives: ["orynth", "brayko", "lunexa", "vyreel"],
+      },
+    });
+
+    expect(result.mission.status).toBe("active");
+    expect(result.tasks.length).toBeGreaterThanOrEqual(4);
+    expect(result.tasks.map((task) => task.assignedExecutive)).toEqual(
+      expect.arrayContaining(["orynth", "brayko", "lunexa", "vyreel"]),
+    );
+  });
 });

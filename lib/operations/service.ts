@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { MissionRepository, TaskRepository } from "@/lib/repositories/types";
+import { createMissionTaskPlan, MissionIntent } from "@/lib/missions/planner";
 
 export interface MissionServiceDependencies {
   missions: MissionRepository;
@@ -52,6 +53,41 @@ export class MissionService {
     };
 
     return this.deps.missions.create(mission);
+  }
+
+  async createMissionWithPlan(input: CreateMissionInput & { intent?: MissionIntent }) {
+    const mission = await this.createMission(input);
+    const taskPlan = input.intent ? createMissionTaskPlan(input.intent) : [];
+    const tasks = [];
+
+    for (const task of taskPlan) {
+      tasks.push(
+        await this.createTask(mission.id, {
+          ...task,
+          dependencyIds: [],
+          requiresApproval: task.requiresApproval ?? false,
+          metadata: {
+            source: "mission-planner",
+            missionTitle: mission.title,
+          },
+        }),
+      );
+    }
+
+    if (tasks.length > 0 && mission.status === "planned") {
+      const activeMission = await this.updateMission(mission.id, {
+        status: "active",
+        metadata: {
+          ...mission.metadata,
+          taskCount: tasks.length,
+          source: mission.metadata?.source ?? "mission-planner",
+        },
+      });
+
+      return { mission: activeMission, tasks };
+    }
+
+    return { mission, tasks };
   }
 
   async getMission(id: string) {
