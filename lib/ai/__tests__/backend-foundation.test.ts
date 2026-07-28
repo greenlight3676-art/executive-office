@@ -39,6 +39,12 @@ describe("backend foundation", () => {
     expect(resolveExecutiveProvider("brayko", config).name).toBe("anthropic");
   });
 
+  it("keeps Claude executives available through OpenAI when Claude is not configured", () => {
+    const config = getProviderConfig({ OPENAI_API_KEY: "openai-only" });
+    expect(resolveExecutiveProvider("brayko", config).name).toBe("openai");
+    expect(resolveExecutiveProvider("lunexa", config).name).toBe("openai");
+  });
+
   it("rejects invalid executive ids", () => {
     expect(() => validateChatPayload({ message: "hello", executive: "unknown" })).toThrow(ValidationError);
   });
@@ -52,8 +58,15 @@ describe("backend foundation", () => {
     expect(() => validateBoardroomPayload({ message: "hello", executives: ["brayko", "kavro", "lunexa"] })).toThrow(ValidationError);
   });
 
-  it("requires environment configuration", () => {
-    expect(() => getProviderConfig({})).toThrow(ConfigurationError);
+  it("keeps provider configuration independent", async () => {
+    const config = getProviderConfig({ OPENAI_API_KEY: "openai-only" });
+    expect(config.openai.apiKey).toBe("openai-only");
+    expect(config.anthropic.apiKey).toBe("");
+
+    const anthropic = createAnthropicAdapter(config.anthropic);
+    await expect(
+      anthropic.send({ message: "hello", executive: "brayko", mode: "default" }),
+    ).rejects.toBeInstanceOf(ConfigurationError);
   });
 
   it("normalizes provider responses", async () => {

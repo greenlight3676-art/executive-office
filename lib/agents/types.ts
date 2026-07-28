@@ -18,6 +18,10 @@ export interface ExecutiveAgent {
   name: string;
   symbol: string;
   role: string;
+  mandate: string;
+  motto: string;
+  communicationStyle: string;
+  accent: string;
   description: string;
   defaultProvider: "openai" | "anthropic";
   defaultModelTier: ModelTier;

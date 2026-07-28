@@ -1,4 +1,4 @@
-import { createSupabaseClient } from "../..//repositories/supabase";
+import { createSupabaseClient } from "../../repositories/supabase";
 import { InMemoryConversationRepository, InMemoryMemoryRepository, InMemoryMessageRepository, InMemoryMissionRepository, InMemoryTaskRepository } from "../../repositories/in-memory";
 
 describe("persistence architecture", () => {
@@ -33,6 +33,7 @@ describe("persistence architecture", () => {
     expect(stored?.title).toBe("Persistence mission");
     expect(await conversations.get("conversation-1")).toBeTruthy();
     expect(await messages.listByConversation("conversation-1")).toEqual([]);
+    expect(await tasks.listByMission("mission-1")).toEqual([]);
     expect(await memories.listByExecutive("orynth")).toEqual([]);
   });
 

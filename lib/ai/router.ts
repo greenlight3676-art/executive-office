@@ -8,7 +8,9 @@ export function resolveExecutiveProvider(executive: string, config: ReturnType<t
   switch (executive) {
     case "brayko":
     case "lunexa":
-      return createAnthropicAdapter(config.anthropic);
+      return config.anthropic.apiKey
+        ? createAnthropicAdapter(config.anthropic)
+        : createOpenAIAdapter(config.openai);
     case "orynth":
     case "vyreel":
     case "kavro":

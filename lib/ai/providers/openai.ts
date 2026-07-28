@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { ProviderAdapter, ProviderRequest, ProviderResponse, ProviderConfig } from "./types";
+import { ProviderAdapter, ProviderConfig } from "./types";
 import { ConfigurationError, ProviderError } from "../errors";
 
 export function createOpenAIAdapter(config: ProviderConfig): ProviderAdapter {

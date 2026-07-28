@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { ProviderAdapter, ProviderConfig, ProviderRequest, ProviderResponse } from "./types";
+import { ProviderAdapter, ProviderConfig } from "./types";
 import { ConfigurationError, ProviderError } from "../errors";
 
 export function createAnthropicAdapter(config: ProviderConfig): ProviderAdapter {

@@ -5,22 +5,53 @@ import { AIError, ConfigurationError, ValidationError } from "@/lib/ai/errors";
 import { createCostPolicy, enforceCostPolicy } from "@/lib/ai/cost-policy";
 import { loadExecutiveContext, resolveExecutiveProvider } from "@/lib/ai/router";
 import { requiresApproval } from "@/lib/security/permissions";
-import { createMemoryRetriever } from "@/lib/memory/retriever";
-import { createMemorySaver } from "@/lib/memory/saver";
 import { approvalService } from "@/lib/approvals/store";
+import { conversationStore } from "@/lib/conversations/store";
+import {
+  buildExecutivePrompt,
+  createConversationTitle,
+  shouldSaveLongTermMemory,
+} from "@/lib/conversations/context";
 
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.json();
-    const validated = validateChatPayload(payload);
+    const validated = validateChatPayload({
+      ...payload,
+      message: payload?.message ?? payload?.prompt,
+    });
     const config = getProviderConfig(process.env);
     const costPolicy = createCostPolicy();
     enforceCostPolicy(validated.message, 400, costPolicy);
 
     const executive = loadExecutiveContext(validated.executive);
-    const provider = resolveExecutiveProvider(validated.executive, config);
-    const retrieveMemory = createMemoryRetriever();
-    const saveMemory = createMemorySaver();
+    const existingConversation = validated.conversationId
+      ? await conversationStore.getConversation(validated.conversationId)
+      : null;
+
+    if (validated.conversationId && !existingConversation) {
+      return NextResponse.json({ error: "Conversation not found." }, { status: 404 });
+    }
+
+    if (existingConversation && existingConversation.executiveId !== executive.id) {
+      return NextResponse.json(
+        { error: "This conversation belongs to a different executive." },
+        { status: 409 },
+      );
+    }
+
+    const conversation =
+      existingConversation ??
+      (await conversationStore.createConversation({
+        executiveId: executive.id,
+        title: createConversationTitle(validated.message),
+      }));
+
+    const userMessage = await conversationStore.createMessage({
+      conversationId: conversation.id,
+      role: "user",
+      content: validated.message,
+    });
 
     const approvalAction = detectApprovalAction(validated.message);
     if (approvalAction && requiresApproval(approvalAction)) {
@@ -30,12 +61,22 @@ export async function POST(request: NextRequest) {
         reason: `The executive requested a sensitive action: ${approvalAction}`,
         riskLevel: approvalAction.includes("spend") || approvalAction.includes("paid") ? "high" : "medium",
         estimatedCost: approvalAction.includes("spend") || approvalAction.includes("paid") ? 100 : undefined,
-        conversationId: validated.conversationId,
+        conversationId: conversation.id,
+      });
+
+      const assistantMessage = await conversationStore.createMessage({
+        conversationId: conversation.id,
+        role: "assistant",
+        content: `I prepared an approval request for “${approvalAction}.” TJ must approve it before execution.`,
+        metadata: { approvalRequestId: approvalRequest.id },
       });
 
       return NextResponse.json({
         success: true,
         approvalRequest,
+        conversation,
+        userMessage,
+        message: assistantMessage,
         executive: {
           id: executive.id,
           name: executive.name,
@@ -44,15 +85,22 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const shortTermMemory = await retrieveMemory(validated.executive, "short-term");
-    const longTermMemory = await retrieveMemory(validated.executive, "long-term");
-    const projectMemory = await retrieveMemory(validated.executive, "project");
+    const [history, memories] = await Promise.all([
+      conversationStore.listMessages(conversation.id, 14),
+      conversationStore.listMemories(executive.id, 12),
+    ]);
 
+    const provider = resolveExecutiveProvider(validated.executive, config);
     const response = await provider.send({
-      message: `${executive.systemPrompt}\n\n${shortTermMemory.promptPrefix}\n\n${longTermMemory.promptPrefix}\n\n${projectMemory.promptPrefix}\n\n${validated.message}`,
+      message: buildExecutivePrompt({
+        executive,
+        message: validated.message,
+        history,
+        memories,
+      }),
       executive: validated.executive,
       mode: validated.mode === "deep" ? "deep" : "default",
-      conversationId: validated.conversationId,
+      conversationId: conversation.id,
       maxOutputTokens: executive.maxOutputTokens,
     });
 
@@ -64,15 +112,53 @@ export async function POST(request: NextRequest) {
         reason: structuredProposal.reason,
         riskLevel: structuredProposal.riskLevel,
         estimatedCost: structuredProposal.estimatedCost,
-        conversationId: validated.conversationId,
+        conversationId: conversation.id,
       });
     }
 
-    await saveMemory(validated.executive, "short-term", `${validated.message} -> ${response.text}`, "conversation");
-    await saveMemory(validated.executive, "long-term", `${validated.message} -> ${response.text}`, "decision");
+    const assistantMessage = await conversationStore.createMessage({
+      conversationId: conversation.id,
+      role: "assistant",
+      content: response.text,
+      metadata: {
+        provider: response.provider,
+        model: response.model,
+        inputTokens: response.inputTokens,
+        outputTokens: response.outputTokens,
+      },
+    });
+
+    const memoryContent = `TJ: ${validated.message.slice(0, 500)}\n${executive.name}: ${response.text.slice(0, 900)}`;
+    const memoryWrites = [
+      conversationStore.createMemory({
+        executiveId: executive.id,
+        scope: "short-term",
+        content: memoryContent,
+        kind: "conversation",
+        metadata: { conversationId: conversation.id },
+      }),
+    ];
+
+    if (shouldSaveLongTermMemory(validated.message)) {
+      memoryWrites.push(
+        conversationStore.createMemory({
+          executiveId: executive.id,
+          scope: "long-term",
+          content: memoryContent,
+          kind: "user-directed-memory",
+          metadata: { conversationId: conversation.id },
+        }),
+      );
+    }
+
+    await Promise.all(memoryWrites);
 
     return NextResponse.json({
       success: true,
+      conversation,
+      userMessage,
+      message: assistantMessage,
+      persistence: conversationStore.persistence,
       executive: {
         id: executive.id,
         name: executive.name,

@@ -4,7 +4,6 @@ import { resolveExecutiveProvider } from "@/lib/ai/router";
 import { getProviderConfig } from "@/lib/ai/providers/config";
 import { validateChatPayload } from "@/lib/ai/validation";
 import { createOpenAIAdapter } from "@/lib/ai/providers/openai";
-import { createAnthropicAdapter } from "@/lib/ai/providers/anthropic";
 
 jest.mock("openai", () => ({
   __esModule: true,
