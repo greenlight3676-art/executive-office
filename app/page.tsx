@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ApprovalInbox } from "@/components/ApprovalInbox";
 import { AuthGate } from "@/components/AuthGate";
 import { BoardroomPanel } from "@/components/BoardroomPanel";
+import { IntegrationsPanel } from "@/components/IntegrationsPanel";
 import { MissionCenter } from "@/components/MissionCenter";
 import { SystemHealthPanel } from "@/components/SystemHealthPanel";
 
@@ -12,6 +13,7 @@ const checks = [
   { label: "Executives", href: "/api/executives" },
   { label: "Missions API", href: "/api/missions" },
   { label: "Messages", href: "/messages" },
+  { label: "Integrations", href: "/integrations" },
 ];
 
 export default function Home() {
@@ -25,7 +27,7 @@ export default function Home() {
             <p className="mt-2 text-sm text-zinc-400">
               Test the real workflow: chat, memory, missions, tasks, approvals, and boardroom decisions.
             </p>
-            <div className="mt-4 grid gap-2 sm:grid-cols-4">
+            <div className="mt-4 grid gap-2 sm:grid-cols-5">
               {checks.map((check) => (
                 <Link
                   key={check.href}
@@ -39,6 +41,8 @@ export default function Home() {
           </header>
 
           <SystemHealthPanel />
+
+          <IntegrationsPanel />
 
           <section className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
             <MissionCenter />
