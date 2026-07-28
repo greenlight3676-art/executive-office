@@ -23,6 +23,15 @@ type IntegrationsPayload = {
   };
 };
 
+type SandboxResult = {
+  ok?: boolean;
+  stdout?: string;
+  stderr?: string;
+  exitCode?: number;
+  durationMs?: number;
+  sandboxId?: string;
+};
+
 const categoryLabels: Record<string, string> = {
   platform: "Platform",
   ai: "AI",
@@ -54,6 +63,8 @@ export function IntegrationsPanel() {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [summary, setSummary] = useState<IntegrationsPayload["summary"]>();
   const [selectedCategory, setSelectedCategory] = useState("all");
+  const [sandboxResult, setSandboxResult] = useState<SandboxResult | null>(null);
+  const [isRunningSandbox, setIsRunningSandbox] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -71,6 +82,27 @@ export function IntegrationsPanel() {
       setError(loadError instanceof Error ? loadError.message : "Unable to load integrations.");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function runSandboxCheck() {
+    if (isRunningSandbox) return;
+
+    setIsRunningSandbox(true);
+    setSandboxResult(null);
+    setError("");
+
+    try {
+      const response = await authFetch("/api/sandbox/e2b", {
+        method: "POST",
+      });
+      const payload = (await response.json()) as { result?: SandboxResult; error?: string };
+      if (!response.ok) throw new Error(payload.error ?? "Unable to run E2B sandbox check.");
+      setSandboxResult(payload.result ?? null);
+    } catch (sandboxError) {
+      setError(sandboxError instanceof Error ? sandboxError.message : "Unable to run E2B sandbox check.");
+    } finally {
+      setIsRunningSandbox(false);
     }
   }
 
@@ -176,6 +208,50 @@ export function IntegrationsPanel() {
                 <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Approval gates</p>
                 <p className="mt-2 text-sm text-zinc-300">{integration.approvalRequiredFor.join(", ")}</p>
               </div>
+
+              {integration.id === "e2b" ? (
+                <div className="mt-3 rounded-xl border border-cyan-400/20 bg-cyan-400/10 p-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-cyan-300">Brayko sandbox</p>
+                      <p className="mt-1 text-sm text-zinc-300">
+                        Runs one fixed smoke test in an isolated E2B sandbox, then shuts it down.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void runSandboxCheck()}
+                      disabled={integration.status !== "connected" || isRunningSandbox}
+                      className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-medium text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isRunningSandbox ? "Running..." : "Run sandbox check"}
+                    </button>
+                  </div>
+
+                  {sandboxResult ? (
+                    <div className="mt-3 grid gap-2 text-xs sm:grid-cols-4">
+                      <div className="rounded-lg bg-black/30 p-2">
+                        <p className="text-zinc-500">Status</p>
+                        <p className={sandboxResult.ok ? "text-emerald-200" : "text-rose-200"}>
+                          {sandboxResult.ok ? "Ready" : "Check failed"}
+                        </p>
+                      </div>
+                      <div className="rounded-lg bg-black/30 p-2">
+                        <p className="text-zinc-500">Output</p>
+                        <p className="truncate text-zinc-200">{sandboxResult.stdout?.trim() || "none"}</p>
+                      </div>
+                      <div className="rounded-lg bg-black/30 p-2">
+                        <p className="text-zinc-500">Exit</p>
+                        <p className="text-zinc-200">{sandboxResult.exitCode ?? "n/a"}</p>
+                      </div>
+                      <div className="rounded-lg bg-black/30 p-2">
+                        <p className="text-zinc-500">Time</p>
+                        <p className="text-zinc-200">{sandboxResult.durationMs ?? 0}ms</p>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
             </article>
           ))
         )}
