@@ -3,7 +3,11 @@ import { requireApiSession } from "@/lib/auth/api";
 import type { ExecutiveId } from "@/lib/agents/types";
 import { getExecutiveAgent } from "@/lib/agents/registry";
 import { detectToolAction } from "@/lib/tools/router";
-import { executeSafeComposioAction } from "@/lib/tools/composio";
+import {
+  createToolFailureResult,
+  createUnsupportedToolResult,
+  executeSafeComposioAction,
+} from "@/lib/tools/composio";
 
 export async function POST(request: NextRequest) {
   const authError = await requireApiSession(request);
@@ -34,17 +38,13 @@ export async function POST(request: NextRequest) {
       action: proposal.action,
       payloadSummary: proposal.payloadSummary,
       userId: "tj",
-    });
+    }).catch((error) => createToolFailureResult(proposal.action, error));
 
     if (!result) {
       return NextResponse.json({
         success: true,
         proposal,
-        result: {
-          ok: true,
-          action: proposal.action,
-          summary: "This safe action is prepared, but no direct executor is wired yet.",
-        },
+        result: createUnsupportedToolResult(proposal.action),
       });
     }
 

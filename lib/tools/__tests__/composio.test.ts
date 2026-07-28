@@ -44,6 +44,7 @@ describe("Composio tool client", () => {
       headers: { "x-api-key": "composio-key" },
     }));
   });
+
   it("executes a whitelisted safe tool through Composio", async () => {
     const fetchMock = jest.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: true,
@@ -63,7 +64,10 @@ describe("Composio tool client", () => {
       ok: true,
       toolSlug: "GMAIL_FETCH_EMAILS",
       action: "read-email",
+      status: "success",
+      title: "Gmail inbox check",
       logId: "log_123",
+      records: [{ title: "Deploy complete" }],
     });
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining("/tools/execute/GMAIL_FETCH_EMAILS"),
@@ -84,5 +88,27 @@ describe("Composio tool client", () => {
         { COMPOSIO_API_KEY: "composio-key" } as NodeJS.ProcessEnv,
       ),
     ).resolves.toBeNull();
+  });
+
+  it("classifies missing connected accounts", async () => {
+    jest.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: false,
+      status: 403,
+      json: async () => ({
+        error: { message: "No connected account found for Gmail." },
+      }),
+    } as Response);
+
+    const result = await executeSafeComposioAction(
+      { action: "read-email", payloadSummary: "check gmail", userId: "tj" },
+      { COMPOSIO_API_KEY: "composio-key" } as NodeJS.ProcessEnv,
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      status: "missing_connection",
+      summary: "No connected account found for Gmail.",
+      records: [],
+    });
   });
 });

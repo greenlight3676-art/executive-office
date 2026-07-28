@@ -33,6 +33,25 @@ type Message = {
   metadata?: Record<string, unknown>;
 };
 
+type ToolResultRecord = {
+  title: string;
+  subtitle?: string;
+  detail?: string;
+  url?: string;
+};
+
+type ToolResult = {
+  ok: boolean;
+  toolSlug: string;
+  action: string;
+  status: "success" | "missing_config" | "missing_connection" | "tool_error" | "unsupported";
+  title: string;
+  summary: string;
+  records?: ToolResultRecord[];
+  logId?: string;
+  error?: string;
+};
+
 type MessagesWorkspaceProps = {
   executives: ExecutiveProfile[];
 };
@@ -46,6 +65,91 @@ function formatThreadTime(value: string) {
   }
 
   return date.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function getToolResult(message: Message): ToolResult | null {
+  const value = message.metadata?.toolResult;
+  if (!value || typeof value !== "object") return null;
+
+  const result = value as Partial<ToolResult>;
+  if (typeof result.action !== "string" || typeof result.summary !== "string") return null;
+
+  return {
+    ok: Boolean(result.ok),
+    toolSlug: typeof result.toolSlug === "string" ? result.toolSlug : "tool",
+    action: result.action,
+    status: result.status ?? (result.ok ? "success" : "tool_error"),
+    title: typeof result.title === "string" ? result.title : result.action,
+    summary: result.summary,
+    records: Array.isArray(result.records) ? result.records.filter(isToolResultRecord) : [],
+    logId: typeof result.logId === "string" ? result.logId : undefined,
+    error: typeof result.error === "string" ? result.error : undefined,
+  };
+}
+
+function isToolResultRecord(value: unknown): value is ToolResultRecord {
+  return Boolean(value && typeof value === "object" && typeof (value as ToolResultRecord).title === "string");
+}
+
+function toolStatusCopy(status: ToolResult["status"]) {
+  if (status === "success") return "Connected";
+  if (status === "missing_config") return "Needs API key";
+  if (status === "missing_connection") return "Connect account";
+  if (status === "unsupported") return "Prepared";
+  return "Tool error";
+}
+
+function toolStatusClass(status: ToolResult["status"]) {
+  if (status === "success") return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+  if (status === "missing_connection" || status === "missing_config") return "border-amber-400/30 bg-amber-400/10 text-amber-200";
+  if (status === "unsupported") return "border-cyan-400/30 bg-cyan-400/10 text-cyan-200";
+  return "border-rose-400/30 bg-rose-400/10 text-rose-200";
+}
+
+function ToolResultCard({ result }: { result: ToolResult }) {
+  const records = result.records ?? [];
+
+  return (
+    <div className="mt-3 rounded-2xl border border-white/10 bg-black/25 p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-600">Tool result</p>
+          <h3 className="mt-1 text-sm font-semibold text-zinc-100">{result.title}</h3>
+          <p className="mt-1 text-xs text-zinc-400">{result.summary}</p>
+        </div>
+        <span className={`w-fit rounded-full border px-2.5 py-1 text-[11px] ${toolStatusClass(result.status)}`}>
+          {toolStatusCopy(result.status)}
+        </span>
+      </div>
+
+      {records.length ? (
+        <div className="mt-3 space-y-2">
+          {records.map((record, index) => (
+            <div key={`${record.title}-${index}`} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-sm font-medium text-zinc-100">{record.title}</div>
+              {record.subtitle ? <div className="mt-1 text-xs text-zinc-500">{record.subtitle}</div> : null}
+              {record.detail ? <p className="mt-2 text-xs leading-5 text-zinc-400">{record.detail}</p> : null}
+              {record.url ? (
+                <a
+                  href={record.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 inline-block text-xs text-cyan-300 hover:text-cyan-200"
+                >
+                  Open result
+                </a>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-zinc-600">
+        <span>{result.toolSlug}</span>
+        {result.logId ? <span>Log {result.logId}</span> : null}
+      </div>
+    </div>
+  );
 }
 
 export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
@@ -343,21 +447,26 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
               <p className="mt-3 text-sm italic text-zinc-600">“{selectedExecutive.motto}”</p>
             </div>
           ) : (
-            messages.map((message) => (
-              <article
-                key={message.id}
-                className={`max-w-[88%] rounded-2xl border p-3 text-sm leading-6 sm:max-w-[78%] ${
-                  message.role === "user"
-                    ? "ml-auto border-cyan-400/20 bg-cyan-400/10 text-cyan-50"
-                    : "border-white/10 bg-white/[0.05] text-zinc-300"
-                }`}
-              >
-                <div className="mb-1 text-[10px] uppercase tracking-[0.2em] text-zinc-600">
-                  {message.role === "user" ? "TJ" : selectedExecutive.name}
-                </div>
-                <div className="whitespace-pre-wrap">{message.content}</div>
-              </article>
-            ))
+            messages.map((message) => {
+              const toolResult = getToolResult(message);
+
+              return (
+                <article
+                  key={message.id}
+                  className={`max-w-[88%] rounded-2xl border p-3 text-sm leading-6 sm:max-w-[78%] ${
+                    message.role === "user"
+                      ? "ml-auto border-cyan-400/20 bg-cyan-400/10 text-cyan-50"
+                      : "border-white/10 bg-white/[0.05] text-zinc-300"
+                  }`}
+                >
+                  <div className="mb-1 text-[10px] uppercase tracking-[0.2em] text-zinc-600">
+                    {message.role === "user" ? "TJ" : selectedExecutive.name}
+                  </div>
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  {toolResult ? <ToolResultCard result={toolResult} /> : null}
+                </article>
+              );
+            })
           )}
 
           {isSending ? (
