@@ -40,7 +40,35 @@ export function MissionCenter() {
   }
 
   useEffect(() => {
-    void loadMissions();
+    let cancelled = false;
+
+    async function loadInitialMissions() {
+      try {
+        const response = await fetch("/api/missions", { cache: "no-store" });
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Unable to load missions.");
+        }
+
+        if (!cancelled) {
+          setMissions(Array.isArray(payload.missions) ? payload.missions : []);
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setError(loadError instanceof Error ? loadError.message : "Unable to load missions.");
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    void loadInitialMissions();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   async function createMission(event: FormEvent<HTMLFormElement>) {

@@ -23,7 +23,10 @@ export function BoardroomPanel() {
   const [mission, setMission] = useState("");
   const [responses, setResponses] = useState<BoardResponse[]>([]);
   const [decision, setDecision] = useState<Decision | null>(null);
+  const [synthesis, setSynthesis] = useState<string | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isSavingMission, setIsSavingMission] = useState(false);
+  const [savedMissionId, setSavedMissionId] = useState("");
   const [error, setError] = useState("");
 
   async function runBoardroom(event: FormEvent<HTMLFormElement>) {
@@ -35,6 +38,8 @@ export function BoardroomPanel() {
     setError("");
     setResponses([]);
     setDecision(null);
+    setSynthesis(null);
+    setSavedMissionId("");
 
     try {
       const response = await fetch("/api/boardroom", {
@@ -46,10 +51,49 @@ export function BoardroomPanel() {
       if (!response.ok) throw new Error(payload.error ?? "Boardroom failed.");
       setResponses(Array.isArray(payload.responses) ? payload.responses : []);
       setDecision(payload.decision ?? null);
+      setSynthesis(typeof payload.synthesis === "string" ? payload.synthesis : null);
     } catch (runError) {
       setError(runError instanceof Error ? runError.message : "Boardroom failed.");
     } finally {
       setIsRunning(false);
+    }
+  }
+
+  async function saveAsMission() {
+    if (!mission.trim() || !synthesis || isSavingMission) return;
+
+    setIsSavingMission(true);
+    setError("");
+
+    try {
+      const title =
+        mission.trim().length > 72
+          ? `${mission.trim().slice(0, 69).trimEnd()}...`
+          : mission.trim();
+      const response = await fetch("/api/missions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          description: synthesis,
+          projectId: "forge",
+          createdBy: "tj",
+          assignedExecutives: ["orynth", "brayko", "lunexa", "vyreel", "kavro"],
+          priority: "high",
+          status: "planned",
+          metadata: {
+            source: "boardroom",
+            decision: decision?.outcome,
+          },
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Unable to save mission.");
+      setSavedMissionId(payload.mission?.id ?? "saved");
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Unable to save mission.");
+    } finally {
+      setIsSavingMission(false);
     }
   }
 
@@ -117,6 +161,26 @@ export function BoardroomPanel() {
       ) : (
         <div className="mt-5 rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm text-zinc-500">The board is waiting for its first mission.</div>
       )}
+
+      {synthesis ? (
+        <div className="mt-5 rounded-3xl border border-cyan-400/20 bg-gradient-to-br from-cyan-400/10 via-white/[0.04] to-fuchsia-400/10 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.25em] text-cyan-300">Chief of Staff synthesis</p>
+              <h3 className="mt-2 text-xl font-semibold">One plan from the full room.</h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => void saveAsMission()}
+              disabled={isSavingMission || Boolean(savedMissionId)}
+              className="rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-2.5 text-sm font-medium text-cyan-100 transition hover:bg-cyan-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {savedMissionId ? "Saved to Mission Center" : isSavingMission ? "Saving..." : "Save as mission"}
+            </button>
+          </div>
+          <div className="mt-4 whitespace-pre-wrap text-sm leading-6 text-zinc-300">{synthesis}</div>
+        </div>
+      ) : null}
     </section>
   );
 }
