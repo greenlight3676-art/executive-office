@@ -3,7 +3,7 @@ import { getProviderConfig } from "@/lib/ai/providers/config";
 import { validateChatPayload } from "@/lib/ai/validation";
 import { AIError, ConfigurationError, ValidationError } from "@/lib/ai/errors";
 import { createCostPolicy, enforceCostPolicy } from "@/lib/ai/cost-policy";
-import { loadExecutiveContext, resolveExecutiveProvider } from "@/lib/ai/router";
+import { loadExecutiveContext, sendExecutiveRequest } from "@/lib/ai/router";
 import { requiresApproval } from "@/lib/security/permissions";
 import { approvalService } from "@/lib/approvals/store";
 import { conversationStore } from "@/lib/conversations/store";
@@ -90,8 +90,7 @@ export async function POST(request: NextRequest) {
       conversationStore.listMemories(executive.id, 12),
     ]);
 
-    const provider = resolveExecutiveProvider(validated.executive, config);
-    const response = await provider.send({
+    const response = await sendExecutiveRequest(validated.executive, config, {
       message: buildExecutivePrompt({
         executive,
         message: validated.message,

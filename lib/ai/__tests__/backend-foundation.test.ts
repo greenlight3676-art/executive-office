@@ -2,7 +2,7 @@ import { createCostPolicy, enforceCostPolicy } from "../cost-policy";
 import { validateBoardroomPayload, validateChatPayload } from "../validation";
 import { createOpenAIAdapter } from "../providers/openai";
 import { createAnthropicAdapter } from "../providers/anthropic";
-import { resolveExecutiveProvider } from "../router";
+import { resolveExecutiveProvider, sendExecutiveRequest } from "../router";
 import { getProviderConfig } from "../providers/config";
 import { ConfigurationError, ValidationError } from "../errors";
 
@@ -43,6 +43,27 @@ describe("backend foundation", () => {
     const config = getProviderConfig({ OPENAI_API_KEY: "openai-only" });
     expect(resolveExecutiveProvider("brayko", config).name).toBe("openai");
     expect(resolveExecutiveProvider("lunexa", config).name).toBe("openai");
+  });
+
+  it("falls back to OpenAI when a Claude executive request fails", async () => {
+    const AnthropicMock = jest.requireMock("@anthropic-ai/sdk").default;
+    AnthropicMock.mockImplementationOnce(() => ({
+      messages: {
+        create: jest.fn().mockRejectedValue(new Error("bad anthropic key")),
+      },
+    }));
+
+    const response = await sendExecutiveRequest(
+      "brayko",
+      getProviderConfig({
+        OPENAI_API_KEY: "openai-key",
+        ANTHROPIC_API_KEY: "anthropic-key",
+      }),
+      { message: "hello", executive: "brayko", mode: "default" },
+    );
+
+    expect(response.provider).toBe("openai");
+    expect(response.metadata?.fallbackFrom).toBe("anthropic");
   });
 
   it("rejects invalid executive ids", () => {

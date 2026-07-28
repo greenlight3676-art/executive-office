@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProviderConfig } from "@/lib/ai/providers/config";
-import { listExecutiveAgents, resolveExecutiveProvider } from "@/lib/ai/router";
+import { listExecutiveAgents, sendExecutiveRequest } from "@/lib/ai/router";
 import { createCostPolicy, enforceCostPolicy } from "@/lib/ai/cost-policy";
 import { conversationStore } from "@/lib/conversations/store";
 
@@ -26,8 +26,7 @@ export async function POST(request: NextRequest) {
       executives.map(async (executive) => {
         try {
           const memories = await conversationStore.listMemories(executive.id, 6);
-          const provider = resolveExecutiveProvider(executive.id, config);
-          const result = await provider.send({
+          const result = await sendExecutiveRequest(executive.id, config, {
             executive: executive.id,
             mode: "default",
             maxOutputTokens: 320,
@@ -90,8 +89,7 @@ export async function POST(request: NextRequest) {
         const orynth = executives.find((executive) => executive.id === "orynth");
         if (!orynth) throw new Error("Orynth is not registered.");
 
-        const synthesisProvider = resolveExecutiveProvider("orynth", config);
-        const synthesisResponse = await synthesisProvider.send({
+        const synthesisResponse = await sendExecutiveRequest("orynth", config, {
           executive: "orynth",
           mode: "default",
           maxOutputTokens: 500,
