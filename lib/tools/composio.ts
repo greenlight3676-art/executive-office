@@ -16,6 +16,16 @@ export type ComposioStatus = {
   error?: string;
 };
 
+export type ComposioExecutionResult = {
+  ok: boolean;
+  toolSlug: string;
+  action: string;
+  summary: string;
+  data?: unknown;
+  logId?: string;
+  error?: string;
+};
+
 type ComposioToolPayload = {
   items?: unknown[];
   tools?: unknown[];
@@ -99,6 +109,76 @@ export async function searchComposioTools(
   return extractTools(payload).map(toToolSummary).filter((tool): tool is ComposioToolSummary => Boolean(tool));
 }
 
+export async function executeComposioTool(
+  options: { toolSlug: string; text: string; action: string; userId?: string },
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<ComposioExecutionResult> {
+  const apiKey = env.COMPOSIO_API_KEY;
+  if (!apiKey) {
+    throw new Error("COMPOSIO_API_KEY is not configured.");
+  }
+
+  const response = await fetch(`${COMPOSIO_BASE_URL}/tools/execute/${encodeURIComponent(options.toolSlug)}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+    },
+    body: JSON.stringify({
+      text: options.text,
+      user_id: options.userId ?? "tj",
+      version: "latest",
+    }),
+  });
+
+  const payload = (await response.json().catch(() => ({}))) as {
+    data?: unknown;
+    error?: { message?: string } | string;
+    successful?: boolean;
+    log_id?: string;
+  };
+
+  if (!response.ok || payload.successful === false) {
+    const error = typeof payload.error === "string" ? payload.error : payload.error?.message;
+    return {
+      ok: false,
+      toolSlug: options.toolSlug,
+      action: options.action,
+      summary: error ?? `Composio returned ${response.status}.`,
+      error: error ?? `Composio returned ${response.status}.`,
+      data: payload.data,
+      logId: payload.log_id,
+    };
+  }
+
+  return {
+    ok: true,
+    toolSlug: options.toolSlug,
+    action: options.action,
+    summary: summarizeToolData(payload.data),
+    data: payload.data,
+    logId: payload.log_id,
+  };
+}
+
+export async function executeSafeComposioAction(
+  options: { action: string; payloadSummary: string; userId?: string },
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<ComposioExecutionResult | null> {
+  const toolSlug = safeActionToolSlugs[options.action];
+  if (!toolSlug) return null;
+
+  return executeComposioTool(
+    {
+      toolSlug,
+      action: options.action,
+      text: options.payloadSummary,
+      userId: options.userId,
+    },
+    env,
+  );
+}
+
 function extractTools(payload: ComposioToolPayload): unknown[] {
   if (Array.isArray(payload.items)) return payload.items;
   if (Array.isArray(payload.tools)) return payload.tools;
@@ -123,4 +203,22 @@ function toToolSummary(tool: unknown): ComposioToolSummary | null {
     toolkit: record.toolkit_slug ? String(record.toolkit_slug) : undefined,
     description: record.description ? String(record.description).slice(0, 180) : undefined,
   };
+}
+
+const safeActionToolSlugs: Record<string, string> = {
+  "read-email": "GMAIL_FETCH_EMAILS",
+  "read-calendar": "GOOGLECALENDAR_FIND_EVENT",
+  "inspect-repository": "GITHUB_GET_A_REPOSITORY",
+  research: "PERPLEXITYAI_PERPLEXITY_AI_SEARCH",
+};
+
+function summarizeToolData(data: unknown) {
+  if (data === undefined || data === null) return "Tool ran successfully.";
+  if (typeof data === "string") return data.slice(0, 500);
+
+  try {
+    return JSON.stringify(data).slice(0, 700);
+  } catch {
+    return "Tool ran successfully, but the result could not be summarized.";
+  }
 }

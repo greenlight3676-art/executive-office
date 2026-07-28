@@ -57,11 +57,27 @@ const toolRules: ToolRule[] = [
   },
   {
     tool: "calendar",
+    action: "read-calendar",
+    keywords: ["check calendar", "read calendar", "what is on my calendar", "calendar today", "calendar this week"],
+    executives: ["orynth"],
+    readOnly: true,
+    reason: "Read-only calendar review can run without changing events.",
+  },
+  {
+    tool: "calendar",
     action: "create-calendar-event",
-    keywords: ["calendar", "schedule", "book", "remind me"],
+    keywords: ["schedule", "book", "create event", "add event", "remind me"],
     executives: ["orynth"],
     approvalAction: "create-calendar-event",
     reason: "Calendar changes can invite people or affect commitments, so they need approval first.",
+  },
+  {
+    tool: "github",
+    action: "inspect-repository",
+    keywords: ["check github", "inspect repo", "repo status", "github status", "open issues"],
+    executives: ["brayko", "orynth"],
+    readOnly: true,
+    reason: "Repository inspection is read-only and can run without modifying branches.",
   },
   {
     tool: "github",

@@ -22,6 +22,20 @@ describe("AI tool router", () => {
     });
   });
 
+  it("detects read-only calendar and GitHub inspections", () => {
+    expect(detectToolAction("Orynth, check calendar today", "orynth")).toMatchObject({
+      tool: "calendar",
+      action: "read-calendar",
+      risk: "safe",
+    });
+
+    expect(detectToolAction("Brayko, inspect repo status", "brayko")).toMatchObject({
+      tool: "github",
+      action: "inspect-repository",
+      risk: "safe",
+    });
+  });
+
   it("blocks executives from using tools outside their lane", () => {
     const proposal = detectToolAction("Kavro, push this to GitHub", "kavro");
 

@@ -62,6 +62,23 @@ export function ApprovalInbox() {
     }
   }
 
+  async function executeApproval(id: string) {
+    setError("");
+
+    try {
+      const response = await authFetch(`/api/approvals/${id}/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actor: "tj" }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Unable to execute approval.");
+      await loadApprovals();
+    } catch (executeError) {
+      setError(executeError instanceof Error ? executeError.message : "Unable to execute approval.");
+    }
+  }
+
   return (
     <section className="rounded-2xl border border-white/10 bg-zinc-900 p-4">
       <div className="flex items-center justify-between gap-3">
@@ -122,6 +139,15 @@ export function ApprovalInbox() {
                       Reject
                     </button>
                   </div>
+                ) : null}
+                {request.status === "approved" && request.executionStatus === "ready" ? (
+                  <button
+                    type="button"
+                    onClick={() => void executeApproval(request.id)}
+                    className="rounded-lg border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs text-cyan-100"
+                  >
+                    Execute
+                  </button>
                 ) : null}
               </div>
             </article>
