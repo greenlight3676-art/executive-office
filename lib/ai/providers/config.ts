@@ -3,14 +3,14 @@ import { ConfigurationError } from "../errors";
 
 export function getProviderConfig(env: Record<string, string | undefined>): Record<"openai" | "anthropic", ProviderConfig> {
   const openaiApiKey = env.OPENAI_API_KEY;
-  const anthropicApiKey = env.ANTHROPIC_API_KEY;
+  const anthropicApiKey = env.ANTHROPIC_API_KEY ?? env.CLAUDE_API_KEY;
 
   if (!openaiApiKey) {
     throw new ConfigurationError("OPENAI_API_KEY is required.");
   }
 
   if (!anthropicApiKey) {
-    throw new ConfigurationError("ANTHROPIC_API_KEY is required.");
+    throw new ConfigurationError("ANTHROPIC_API_KEY or CLAUDE_API_KEY is required.");
   }
 
   return {
@@ -22,9 +22,9 @@ export function getProviderConfig(env: Record<string, string | undefined>): Reco
     },
     anthropic: {
       apiKey: anthropicApiKey,
-      defaultModel: env.ANTHROPIC_DEFAULT_MODEL ?? "claude-3-5-sonnet-latest",
-      deepModel: env.ANTHROPIC_DEEP_MODEL ?? "claude-3-7-sonnet-latest",
-      timeoutMs: 15000,
+      defaultModel: env.ANTHROPIC_DEFAULT_MODEL ?? "claude-sonnet-4-20250514",
+      deepModel: env.ANTHROPIC_DEEP_MODEL ?? "claude-sonnet-4-20250514",
+      timeoutMs: 20000,
     },
   };
 }
