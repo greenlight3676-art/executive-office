@@ -36,6 +36,14 @@ describe("AI tool router", () => {
     });
   });
 
+  it("routes broad app repair requests to repository inspection first", () => {
+    expect(detectToolAction("Brayko, fix my Forge app and make it work like Jarvis", "brayko")).toMatchObject({
+      tool: "github",
+      action: "inspect-repository",
+      risk: "safe",
+    });
+  });
+
   it("blocks executives from using tools outside their lane", () => {
     const proposal = detectToolAction("Kavro, push this to GitHub", "kavro");
 

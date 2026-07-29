@@ -59,6 +59,18 @@ type MissionResult = {
   taskCount: number;
 };
 
+type ApprovalRequest = {
+  id: string;
+  executiveId: string;
+  action: string;
+  reason: string;
+  riskLevel: "low" | "medium" | "high";
+  status: "pending" | "approved" | "rejected" | "expired" | "cancelled" | "executed" | "failed";
+  executionStatus: "pending" | "ready" | "blocked" | "executed" | "failed";
+  estimatedCost?: number;
+  payloadSummary?: string;
+};
+
 type MessagesWorkspaceProps = {
   executives: ExecutiveProfile[];
 };
@@ -106,6 +118,26 @@ function getMissionResult(message: Message): MissionResult | null {
     title: mission.title,
     status: typeof mission.status === "string" ? mission.status : "active",
     taskCount: typeof mission.taskCount === "number" ? mission.taskCount : 0,
+  };
+}
+
+function getApprovalRequest(message: Message): ApprovalRequest | null {
+  const value = message.metadata?.approvalRequest;
+  if (!value || typeof value !== "object") return null;
+
+  const approval = value as Partial<ApprovalRequest>;
+  if (typeof approval.id !== "string" || typeof approval.action !== "string") return null;
+
+  return {
+    id: approval.id,
+    executiveId: typeof approval.executiveId === "string" ? approval.executiveId : "orynth",
+    action: approval.action,
+    reason: typeof approval.reason === "string" ? approval.reason : "Approval is required before execution.",
+    riskLevel: approval.riskLevel === "high" || approval.riskLevel === "low" ? approval.riskLevel : "medium",
+    status: approval.status ?? "pending",
+    executionStatus: approval.executionStatus ?? "pending",
+    estimatedCost: typeof approval.estimatedCost === "number" ? approval.estimatedCost : undefined,
+    payloadSummary: typeof approval.payloadSummary === "string" ? approval.payloadSummary : undefined,
   };
 }
 
@@ -188,6 +220,68 @@ function MissionResultCard({ mission }: { mission: MissionResult }) {
         <span className="w-fit rounded-full border border-fuchsia-300/30 bg-black/20 px-2.5 py-1 text-[11px] text-fuchsia-100">
           {mission.status}
         </span>
+      </div>
+    </div>
+  );
+}
+
+function ApprovalRequestCard({
+  approval,
+  onDecide,
+  onExecute,
+}: {
+  approval: ApprovalRequest;
+  onDecide: (id: string, action: "approve" | "reject") => void;
+  onExecute: (id: string) => void;
+}) {
+  const isPending = approval.status === "pending";
+  const isReady = approval.status === "approved" && approval.executionStatus === "ready";
+
+  return (
+    <div className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-400/10 p-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-amber-300/70">Approval needed</p>
+          <h3 className="mt-1 text-sm font-semibold text-amber-50">{approval.action}</h3>
+          <p className="mt-1 text-xs leading-5 text-amber-100/75">{approval.reason}</p>
+          {approval.payloadSummary ? (
+            <p className="mt-2 rounded-xl border border-amber-300/10 bg-black/20 p-2 text-xs text-amber-100/60">
+              {approval.payloadSummary}
+            </p>
+          ) : null}
+          <div className="mt-2 text-[11px] uppercase tracking-[0.16em] text-amber-200/60">
+            {approval.executiveId} • {approval.riskLevel} risk • {approval.status}
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {isPending ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onDecide(approval.id, "approve")}
+                className="rounded-xl border border-emerald-400/30 bg-emerald-400/15 px-3 py-2 text-xs font-medium text-emerald-100"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                onClick={() => onDecide(approval.id, "reject")}
+                className="rounded-xl border border-rose-400/30 bg-rose-400/15 px-3 py-2 text-xs font-medium text-rose-100"
+              >
+                Reject
+              </button>
+            </>
+          ) : null}
+          {isReady ? (
+            <button
+              type="button"
+              onClick={() => onExecute(approval.id)}
+              className="rounded-xl border border-cyan-400/30 bg-cyan-400/15 px-3 py-2 text-xs font-medium text-cyan-100"
+            >
+              Execute
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -335,6 +429,62 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
       ]);
     } finally {
       setIsSending(false);
+    }
+  }
+
+  function updateApprovalInMessages(approval: ApprovalRequest) {
+    setMessages((current) =>
+      current.map((message) => {
+        const existing = getApprovalRequest(message);
+        if (!existing || existing.id !== approval.id) return message;
+
+        return {
+          ...message,
+          metadata: {
+            ...message.metadata,
+            approvalRequest: approval,
+            approvalRequestId: approval.id,
+          },
+        };
+      }),
+    );
+  }
+
+  async function decideApproval(id: string, action: "approve" | "reject") {
+    setError("");
+
+    try {
+      const response = await authFetch(`/api/approvals/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action,
+          actor: "tj",
+          reason: `TJ tapped ${action} in executive chat.`,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Unable to update approval.");
+      if (payload.approvalRequest) updateApprovalInMessages(payload.approvalRequest as ApprovalRequest);
+    } catch (approvalError) {
+      setError(approvalError instanceof Error ? approvalError.message : "Unable to update approval.");
+    }
+  }
+
+  async function executeApproval(id: string) {
+    setError("");
+
+    try {
+      const response = await authFetch(`/api/approvals/${id}/execute`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actor: "tj" }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Unable to execute approval.");
+      if (payload.approvalRequest) updateApprovalInMessages(payload.approvalRequest as ApprovalRequest);
+    } catch (approvalError) {
+      setError(approvalError instanceof Error ? approvalError.message : "Unable to execute approval.");
     }
   }
 
@@ -491,6 +641,7 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
             messages.map((message) => {
               const toolResult = getToolResult(message);
               const missionResult = getMissionResult(message);
+              const approvalRequest = getApprovalRequest(message);
 
               return (
                 <article
@@ -505,6 +656,13 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
                     {message.role === "user" ? "TJ" : selectedExecutive.name}
                   </div>
                   <div className="whitespace-pre-wrap">{message.content}</div>
+                  {approvalRequest ? (
+                    <ApprovalRequestCard
+                      approval={approvalRequest}
+                      onDecide={(id, action) => void decideApproval(id, action)}
+                      onExecute={(id) => void executeApproval(id)}
+                    />
+                  ) : null}
                   {toolResult ? <ToolResultCard result={toolResult} /> : null}
                   {missionResult ? <MissionResultCard mission={missionResult} /> : null}
                 </article>

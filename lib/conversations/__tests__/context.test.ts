@@ -47,6 +47,8 @@ describe("executive conversation context", () => {
     });
 
     expect(prompt).toContain("You are Brayko");
+    expect(prompt).toContain("FORGE OPERATOR PROTOCOL");
+    expect(prompt).toContain("use the approval buttons");
     expect(prompt).toContain("TJ prefers mobile-first builds.");
     expect(prompt).toContain("We need persistent messages.");
     expect(prompt).toContain("What is the next build action?");

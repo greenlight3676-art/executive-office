@@ -101,8 +101,8 @@ export async function POST(request: NextRequest) {
       const assistantMessage = await conversationStore.createMessage({
         conversationId: conversation.id,
         role: "assistant",
-        content: `I prepared an approval request for ${toolProposal.tool}. TJ must approve “${toolProposal.action}” before Forge runs it.`,
-        metadata: { approvalRequestId: approvalRequest.id, toolProposal },
+        content: `Approval ready: ${toolProposal.action}. Tap Approve to allow Forge to run it, or Reject to stop it.`,
+        metadata: { approvalRequestId: approvalRequest.id, approvalRequest, toolProposal },
       });
 
       return NextResponse.json({
@@ -134,8 +134,8 @@ export async function POST(request: NextRequest) {
       const assistantMessage = await conversationStore.createMessage({
         conversationId: conversation.id,
         role: "assistant",
-        content: `I prepared an approval request for “${approvalAction}.” TJ must approve it before execution.`,
-        metadata: { approvalRequestId: approvalRequest.id },
+        content: `Approval ready: ${approvalAction}. Tap Approve to allow Forge to run it, or Reject to stop it.`,
+        metadata: { approvalRequestId: approvalRequest.id, approvalRequest },
       });
 
       return NextResponse.json({

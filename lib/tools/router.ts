@@ -24,6 +24,14 @@ type ToolRule = {
 
 const toolRules: ToolRule[] = [
   {
+    tool: "github",
+    action: "inspect-repository",
+    keywords: ["fix my app", "fix forge", "debug app", "debug forge", "make them operate", "make it work"],
+    executives: ["brayko", "orynth"],
+    readOnly: true,
+    reason: "App repair starts with repository inspection before proposing or applying code changes.",
+  },
+  {
     tool: "gmail",
     action: "read-email",
     keywords: ["check gmail", "read gmail", "check inbox", "read inbox", "what emails"],
@@ -34,7 +42,7 @@ const toolRules: ToolRule[] = [
   {
     tool: "gmail",
     action: "send-email",
-    keywords: ["send email", "email this", "reply to", "send message", "follow up"],
+    keywords: ["send email", "email this", "reply to", "send message", "follow up", "send it", "outreach"],
     executives: ["orynth", "vyreel"],
     approvalAction: "send-external-message",
     reason: "External messages need TJ approval before they are sent.",
@@ -82,10 +90,18 @@ const toolRules: ToolRule[] = [
   {
     tool: "github",
     action: "commit-code",
-    keywords: ["commit", "pull request", "pr", "push", "merge"],
+    keywords: ["commit", "pull request", "open pr", " pr ", "push", "merge", "ship it", "apply fix", "make code change"],
     executives: ["brayko"],
     approvalAction: "modify-production-system",
     reason: "Code changes need approval before touching GitHub branches.",
+  },
+  {
+    tool: "github",
+    action: "deploy-production",
+    keywords: ["deploy", "vercel deploy", "production", "publish app", "go live"],
+    executives: ["brayko", "orynth"],
+    approvalAction: "modify-production-system",
+    reason: "Deployments change the live product and need TJ approval before execution.",
   },
   {
     tool: "e2b",
@@ -114,7 +130,7 @@ const toolRules: ToolRule[] = [
 ];
 
 export function detectToolAction(message: string, executiveId: ExecutiveId): ToolActionProposal | null {
-  const normalized = message.toLowerCase();
+  const normalized = ` ${message.toLowerCase().replace(/\s+/g, " ").trim()} `;
   const rule = toolRules.find((candidate) =>
     candidate.keywords.some((keyword) => normalized.includes(keyword)),
   );
