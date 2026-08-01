@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Forge Executive Office
 
-## Getting Started
+Forge is TJ's lightweight AI operating layer. **ChatGPT is the default reasoning brain**; Forge handles the surrounding work that makes the assistant useful day to day:
 
-First, run the development server:
+- persistent conversations and memory
+- missions and task tracking
+- approvals for sensitive actions
+- connected tools through Composio
+- sandboxed code checks through E2B
+- a mobile-first command center
+
+## Operating principle
+
+> ChatGPT thinks. Forge remembers, organizes, asks for approval, and acts.
+
+Forge does not need five models debating every normal request. Executive profiles still provide roles, prompts, and perspectives, but OpenAI is the default provider for ordinary reasoning.
+
+To explicitly restore executive-specific providers, set:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+FORGE_SPECIALIST_MODE=true
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Without that setting, Forge uses OpenAI whenever an OpenAI API key is configured.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Local development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Open `http://localhost:3000`.
 
-To learn more about Next.js, take a look at the following resources:
+## Validation
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npm test
+npm run lint
+npm run build
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deployment
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The application is designed for Vercel with Supabase-backed persistence. Keep secrets in the deployment environment and never commit API keys to the repository.
