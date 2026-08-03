@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ApprovalInbox } from "@/components/ApprovalInbox";
 import { AuthGate } from "@/components/AuthGate";
 import { BoardroomPanel } from "@/components/BoardroomPanel";
+import { CommandBriefPanel } from "@/components/CommandBriefPanel";
 import { IntegrationsPanel } from "@/components/IntegrationsPanel";
 import { MissionCenter } from "@/components/MissionCenter";
 import { SystemHealthPanel } from "@/components/SystemHealthPanel";
@@ -56,6 +57,8 @@ export default function Home() {
               </span>
             </Link>
           </section>
+
+          <CommandBriefPanel />
 
           <section className="mt-6">
             <div className="flex items-end justify-between gap-3">
