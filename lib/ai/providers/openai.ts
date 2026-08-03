@@ -3,8 +3,6 @@ import { ProviderAdapter, ProviderConfig } from "./types";
 import { ConfigurationError, ProviderError } from "../errors";
 
 export function createOpenAIAdapter(config: ProviderConfig): ProviderAdapter {
-  const client = new OpenAI({ apiKey: config.apiKey });
-
   return {
     name: "openai",
     async send(request) {
@@ -13,6 +11,7 @@ export function createOpenAIAdapter(config: ProviderConfig): ProviderAdapter {
       }
 
       const startedAt = Date.now();
+      const client = new OpenAI({ apiKey: config.apiKey });
 
       try {
         const response = await client.responses.create({
