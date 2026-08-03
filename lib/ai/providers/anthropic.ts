@@ -3,8 +3,6 @@ import { ProviderAdapter, ProviderConfig } from "./types";
 import { ConfigurationError, ProviderError } from "../errors";
 
 export function createAnthropicAdapter(config: ProviderConfig): ProviderAdapter {
-  const client = new Anthropic({ apiKey: config.apiKey });
-
   return {
     name: "anthropic",
     async send(request) {
@@ -13,6 +11,7 @@ export function createAnthropicAdapter(config: ProviderConfig): ProviderAdapter 
       }
 
       const startedAt = Date.now();
+      const client = new Anthropic({ apiKey: config.apiKey });
 
       try {
         const response = await client.messages.create({
