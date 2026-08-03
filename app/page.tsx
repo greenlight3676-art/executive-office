@@ -20,26 +20,26 @@ export default function Home() {
   return (
     <AuthGate>
       <main className="forge-shell min-h-screen bg-[#07070a] text-white">
-        <div className="mx-auto min-h-screen max-w-5xl px-4 pb-28 pt-5 sm:px-6 sm:pb-10">
-          <header className="flex items-center justify-between gap-3">
-            <div>
+        <div className="forge-mobile-frame mx-auto min-h-screen max-w-5xl px-4 pb-28 pt-5 sm:px-6 sm:pb-10">
+          <header className="forge-topbar sticky top-0 z-40 -mx-4 flex items-center justify-between gap-3 px-4 py-3 sm:static sm:mx-0 sm:px-0">
+            <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/40">Forge</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight">Good afternoon, TJ 👋</h1>
+              <h1 className="mt-1 truncate text-[22px] font-semibold tracking-tight sm:text-2xl">Good afternoon, TJ 👋</h1>
             </div>
             <Link
               href="#settings"
               aria-label="Open settings"
-              className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-lg active:scale-95"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-lg active:scale-95"
             >
               ⚙
             </Link>
           </header>
 
-          <section className="mt-6 rounded-[28px] border border-white/10 bg-gradient-to-b from-white/[0.09] to-white/[0.035] p-4 shadow-2xl shadow-black/30">
+          <section className="forge-hero-card mt-4 rounded-[28px] border border-white/10 bg-gradient-to-b from-white/[0.09] to-white/[0.035] p-4 shadow-2xl shadow-black/30 sm:mt-6">
             <div className="flex items-center justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-medium text-white/55">What are we building today?</p>
-                <p className="mt-1 text-lg font-semibold">Tell Forge what to handle.</p>
+                <p className="mt-1 text-lg font-semibold leading-tight">Tell Forge what to handle.</p>
               </div>
               <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
                 Ready
@@ -48,7 +48,7 @@ export default function Home() {
 
             <Link
               href="/messages"
-              className="mt-5 flex min-h-24 items-center justify-center gap-3 rounded-[24px] bg-white text-zinc-950 shadow-lg shadow-white/10 transition active:scale-[0.98]"
+              className="forge-speak-button mt-5 flex min-h-24 items-center justify-center gap-3 rounded-[24px] bg-white text-zinc-950 shadow-lg shadow-white/10 transition active:scale-[0.98]"
             >
               <span className="grid h-12 w-12 place-items-center rounded-full bg-zinc-950 text-xl text-white">🎙</span>
               <span className="text-left">
@@ -60,7 +60,7 @@ export default function Home() {
 
           <CommandBriefPanel />
 
-          <section className="mt-6">
+          <section className="mt-5 sm:mt-6">
             <div className="flex items-end justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold">Quick actions</p>
@@ -68,12 +68,12 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="forge-quick-grid mt-3 grid grid-cols-2 gap-3">
               {quickActions.map((action) => (
                 <Link
                   key={action.label}
                   href={action.href}
-                  className="min-h-32 rounded-[24px] border border-white/10 bg-white/[0.055] p-4 transition active:scale-[0.98] active:bg-white/10"
+                  className="min-h-28 rounded-[22px] border border-white/10 bg-white/[0.055] p-3.5 transition active:scale-[0.98] active:bg-white/10 sm:min-h-32 sm:p-4"
                 >
                   <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white/10 text-xl">{action.icon}</span>
                   <span className="mt-4 block text-sm font-semibold">{action.label}</span>
@@ -83,7 +83,7 @@ export default function Home() {
             </div>
           </section>
 
-          <section className="mt-6 rounded-[26px] border border-white/10 bg-white/[0.045] p-4">
+          <section className="mt-5 rounded-[26px] border border-white/10 bg-white/[0.045] p-4 sm:mt-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold">Recent activity</p>
