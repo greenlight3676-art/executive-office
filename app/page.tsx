@@ -10,102 +10,130 @@ import { MissionCenter } from "@/components/MissionCenter";
 import { SystemHealthPanel } from "@/components/SystemHealthPanel";
 
 const quickActions = [
-  { label: "New mission", href: "#projects", icon: "＋", detail: "Plan and assign work" },
-  { label: "Board room", href: "#board", icon: "◈", detail: "Get one final decision" },
-  { label: "Approvals", href: "#approvals", icon: "✓", detail: "Review before execution" },
-  { label: "Connections", href: "#settings", icon: "⌁", detail: "Manage tools" },
+  { label: "Mission", href: "#projects", icon: "＋", detail: "Start work" },
+  { label: "Board", href: "#board", icon: "◈", detail: "Vote + decide" },
+  { label: "Approve", href: "#approvals", icon: "✓", detail: "Review actions" },
+  { label: "Tools", href: "#settings", icon: "⌁", detail: "Connections" },
+];
+
+const executives = [
+  { name: "Orynth", role: "Chief brain", tone: "Strategy", value: 92 },
+  { name: "Brayko", role: "Builder", tone: "Code", value: 84 },
+  { name: "Lunexa", role: "Design", tone: "Brand", value: 77 },
+  { name: "Vyreel", role: "Growth", tone: "Social", value: 69 },
+  { name: "Kavro", role: "Money", tone: "Ops", value: 73 },
 ];
 
 export default function Home() {
   return (
     <AuthGate>
       <main className="forge-shell min-h-screen bg-[#07070a] text-white">
-        <div className="forge-mobile-frame mx-auto min-h-screen max-w-5xl px-4 pb-28 pt-5 sm:px-6 sm:pb-10">
+        <div className="forge-mobile-frame mx-auto min-h-screen max-w-6xl px-4 pb-28 pt-5 sm:px-6 sm:pb-10">
           <header className="forge-topbar sticky top-0 z-40 -mx-4 flex items-center justify-between gap-3 px-4 py-3 sm:static sm:mx-0 sm:px-0">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/40">Forge</p>
-              <h1 className="mt-1 truncate text-[22px] font-semibold tracking-tight sm:text-2xl">Good afternoon, TJ 👋</h1>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-cyan-200/60">Forge OS</p>
+              <h1 className="mt-1 truncate text-[22px] font-semibold tracking-tight sm:text-2xl">Executive Office</h1>
             </div>
             <Link
               href="#settings"
               aria-label="Open settings"
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.06] text-lg active:scale-95"
+              className="forge-icon-button"
             >
               ⚙
             </Link>
           </header>
 
-          <section className="forge-hero-card mt-4 rounded-[28px] border border-white/10 bg-gradient-to-b from-white/[0.09] to-white/[0.035] p-4 shadow-2xl shadow-black/30 sm:mt-6">
-            <div className="flex items-center justify-between gap-3">
+          <section className="forge-hero-card mt-4 p-4 sm:mt-6 sm:p-6">
+            <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-white/55">What are we building today?</p>
-                <p className="mt-1 text-lg font-semibold leading-tight">Tell Forge what to handle.</p>
+                <div className="forge-live-pill">
+                  <span className="forge-pulse-dot" />
+                  Command layer online
+                </div>
+                <h2 className="mt-5 max-w-2xl text-[34px] font-semibold leading-[0.96] tracking-[-0.04em] sm:text-6xl">
+                  Build. Decide. Execute.
+                </h2>
+                <p className="mt-4 max-w-xl text-sm leading-6 text-white/55 sm:text-base">
+                  Your five-executive AI office for missions, approvals, tools, and boardroom calls.
+                </p>
               </div>
-              <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
-                Ready
-              </span>
-            </div>
-
-            <Link
-              href="/messages"
-              className="forge-speak-button mt-5 flex min-h-24 items-center justify-center gap-3 rounded-[24px] bg-white text-zinc-950 shadow-lg shadow-white/10 transition active:scale-[0.98]"
-            >
-              <span className="grid h-12 w-12 place-items-center rounded-full bg-zinc-950 text-xl text-white">🎙</span>
-              <span className="text-left">
-                <span className="block text-lg font-semibold">Hold to speak</span>
-                <span className="block text-xs text-zinc-500">or tap to open executive chat</span>
-              </span>
-            </Link>
-          </section>
-
-          <CommandBriefPanel />
-
-          <section className="mt-5 sm:mt-6">
-            <div className="flex items-end justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold">Quick actions</p>
-                <p className="mt-1 text-xs text-white/40">Everything important, one tap away.</p>
+              <div className="forge-orb hidden sm:grid">
+                <span>F</span>
               </div>
             </div>
 
-            <div className="forge-quick-grid mt-3 grid grid-cols-2 gap-3">
-              {quickActions.map((action) => (
-                <Link
-                  key={action.label}
-                  href={action.href}
-                  className="min-h-28 rounded-[22px] border border-white/10 bg-white/[0.055] p-3.5 transition active:scale-[0.98] active:bg-white/10 sm:min-h-32 sm:p-4"
-                >
-                  <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white/10 text-xl">{action.icon}</span>
-                  <span className="mt-4 block text-sm font-semibold">{action.label}</span>
-                  <span className="mt-1 block text-xs leading-5 text-white/40">{action.detail}</span>
-                </Link>
-              ))}
+            <div className="mt-6 grid gap-3 sm:grid-cols-[1.15fr_.85fr]">
+              <Link href="/messages" className="forge-primary-command">
+                <span className="forge-command-icon">🎙</span>
+                <span>
+                  <span className="block text-lg font-semibold">Open Executive Chat</span>
+                  <span className="mt-1 block text-xs text-zinc-500">Talk to the office, create missions, route tools.</span>
+                </span>
+              </Link>
+
+              <div className="forge-status-stack">
+                <div>
+                  <span className="text-[10px] uppercase tracking-[0.22em] text-white/35">Today</span>
+                  <p className="mt-1 text-sm font-medium text-white">Ready for orders</p>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="forge-mini-stat"><strong>5</strong><span>execs</span></div>
+                  <div className="forge-mini-stat"><strong>24/7</strong><span>ops</span></div>
+                  <div className="forge-mini-stat"><strong>CEO</strong><span>gated</span></div>
+                </div>
+              </div>
             </div>
           </section>
 
-          <section className="mt-5 rounded-[26px] border border-white/10 bg-white/[0.045] p-4 sm:mt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-semibold">Recent activity</p>
-                <p className="mt-1 text-xs text-white/40">Your latest Forge moves</p>
+          <section className="forge-exec-rail mt-4">
+            {executives.map((executive) => (
+              <article key={executive.name} className="forge-exec-card">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold">{executive.name}</p>
+                    <p className="text-[11px] text-white/38">{executive.role}</p>
+                  </div>
+                  <span>{executive.tone}</span>
+                </div>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                  <div className="h-full rounded-full bg-cyan-200" style={{ width: `${executive.value}%` }} />
+                </div>
+              </article>
+            ))}
+          </section>
+
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_360px]">
+            <CommandBriefPanel />
+
+            <section className="forge-action-panel">
+              <div className="flex items-end justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/35">Fast moves</p>
+                  <h2 className="mt-1 text-xl font-semibold">Launch pad</h2>
+                </div>
               </div>
-              <span className="text-xs text-white/35">Live</span>
+
+              <div className="forge-quick-grid mt-4 grid grid-cols-2 gap-3">
+                {quickActions.map((action) => (
+                  <Link key={action.label} href={action.href} className="forge-action-tile">
+                    <span>{action.icon}</span>
+                    <strong>{action.label}</strong>
+                    <small>{action.detail}</small>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          <section className="forge-activity-strip mt-4">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-white/35">Live pulse</p>
+              <h2 className="mt-1 text-lg font-semibold">Systems are standing by</h2>
             </div>
-            <div className="mt-4 space-y-3 text-sm">
-              <div className="flex items-center gap-3 rounded-2xl bg-black/20 p-3">
-                <span className="grid h-9 w-9 place-items-center rounded-full bg-emerald-400/10 text-emerald-300">✓</span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">Forge systems online</p>
-                  <p className="text-xs text-white/35">OpenAI, Claude, Supabase and persistence</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 rounded-2xl bg-black/20 p-3">
-                <span className="grid h-9 w-9 place-items-center rounded-full bg-fuchsia-400/10 text-fuchsia-300">◈</span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">Board room ready</p>
-                  <p className="text-xs text-white/35">Run only when a mission needs every executive</p>
-                </div>
-              </div>
+            <div className="forge-activity-items">
+              <span>OpenAI ready</span>
+              <span>Board room online</span>
+              <span>Approval gates active</span>
             </div>
           </section>
 
