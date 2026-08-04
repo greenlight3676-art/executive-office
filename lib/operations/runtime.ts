@@ -5,9 +5,12 @@ import {
   SupabaseMissionRepository,
   SupabaseTaskRepository,
 } from "@/lib/repositories/supabase-operations";
+import type { MissionRepository, TaskRepository } from "@/lib/repositories/types";
 
 type ForgeRuntime = {
   missionService: MissionService;
+  missions: MissionRepository;
+  tasks: TaskRepository;
   persistence: "supabase" | "memory";
 };
 
@@ -17,17 +20,18 @@ const globalForForge = globalThis as typeof globalThis & {
 
 function createRuntime(): ForgeRuntime {
   const useSupabase = isSupabaseConfigured();
+  const missions: MissionRepository = useSupabase
+    ? new SupabaseMissionRepository()
+    : new InMemoryMissionRepository();
+  const tasks: TaskRepository = useSupabase
+    ? new SupabaseTaskRepository()
+    : new InMemoryTaskRepository();
 
   return {
     persistence: useSupabase ? "supabase" : "memory",
-    missionService: new MissionService({
-      missions: useSupabase
-        ? new SupabaseMissionRepository()
-        : new InMemoryMissionRepository(),
-      tasks: useSupabase
-        ? new SupabaseTaskRepository()
-        : new InMemoryTaskRepository(),
-    }),
+    missions,
+    tasks,
+    missionService: new MissionService({ missions, tasks }),
   };
 }
 
