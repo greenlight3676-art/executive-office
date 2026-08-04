@@ -1,4 +1,5 @@
 import { getExecutiveAgent, getExecutiveRegistry } from "@/lib/agents/registry";
+import { getForgeBrainMode } from "./brain-policy";
 import { getProviderConfig } from "./providers/config";
 import { createAnthropicAdapter } from "./providers/anthropic";
 import { createGeminiAdapter } from "./providers/gemini";
@@ -7,6 +8,14 @@ import { ProviderAdapter, ProviderRequest, ProviderResponse } from "./providers/
 import { ProviderError } from "./errors";
 
 export function resolveExecutiveProvider(executive: string, config: ReturnType<typeof getProviderConfig>): ProviderAdapter {
+  const brainMode = getForgeBrainMode();
+
+  // Default Forge V2 behavior: one primary reasoning brain. Executive profiles
+  // still shape prompts and responsibilities, while ChatGPT handles the answer.
+  if (brainMode === "chatgpt-first" && config.openai.apiKey) {
+    return createOpenAIAdapter(config.openai);
+  }
+
   switch (executive) {
     case "brayko":
     case "lunexa":
