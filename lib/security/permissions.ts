@@ -9,6 +9,20 @@ const approvalSensitiveActions = new Set([
   "create-paid-resource",
   "modify-production-system",
   "destructive-action",
+  "create-email-draft",
+  "create-calendar-event",
+  "update-calendar-event",
+  "delete-calendar-event",
+  "create-doc",
+  "append-sheet-row",
+  "create-note",
+  "create-github-issue",
+  "create-pull-request",
+  "merge-pull-request",
+  "commit-code",
+  "create-linear-issue",
+  "update-linear-issue",
+  "write-database",
 ]);
 
 export function buildApprovalRequest(action: string, proposedBy: ExecutiveId): ApprovalRequest {

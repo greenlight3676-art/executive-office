@@ -32,9 +32,29 @@ jest.mock("@anthropic-ai/sdk", () => ({
 }));
 
 describe("executive agent registry", () => {
-  it("maps every executive to the correct provider", () => {
-    const config = getProviderConfig(process.env);
-    expect(resolveExecutiveProvider("orynth", config).name).toBe("openai");
+  afterEach(() => {
+    delete process.env.FORGE_SPECIALIST_MODE;
+  });
+
+  it("maps every executive to ChatGPT by default", () => {
+    const config = getProviderConfig({
+      OPENAI_API_KEY: "openai",
+      ANTHROPIC_API_KEY: "anthropic",
+      GEMINI_API_KEY: "gemini",
+    });
+    for (const executiveId of ["orynth", "brayko", "lunexa", "vyreel", "kavro"] as const) {
+      expect(resolveExecutiveProvider(executiveId, config).name).toBe("openai");
+    }
+  });
+
+  it("preserves specialist routing behind the explicit feature flag", () => {
+    process.env.FORGE_SPECIALIST_MODE = "true";
+    const config = getProviderConfig({
+      OPENAI_API_KEY: "openai",
+      ANTHROPIC_API_KEY: "anthropic",
+      GEMINI_API_KEY: "gemini",
+    });
+    expect(resolveExecutiveProvider("orynth", config).name).toBe("gemini");
     expect(resolveExecutiveProvider("brayko", config).name).toBe("anthropic");
     expect(resolveExecutiveProvider("lunexa", config).name).toBe("anthropic");
     expect(resolveExecutiveProvider("vyreel", config).name).toBe("openai");

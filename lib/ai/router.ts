@@ -1,4 +1,5 @@
 import { getExecutiveAgent, getExecutiveRegistry } from "@/lib/agents/registry";
+import { getForgeBrainMode } from "./brain-policy";
 import { getProviderConfig } from "./providers/config";
 import { createAnthropicAdapter } from "./providers/anthropic";
 import { createGeminiAdapter } from "./providers/gemini";
@@ -6,7 +7,14 @@ import { createOpenAIAdapter } from "./providers/openai";
 import { ProviderAdapter, ProviderRequest, ProviderResponse } from "./providers/types";
 import { ProviderError } from "./errors";
 
-export function resolveExecutiveProvider(executive: string, config: ReturnType<typeof getProviderConfig>): ProviderAdapter {
+export function resolveExecutiveProvider(
+  executive: string,
+  config: ReturnType<typeof getProviderConfig>,
+): ProviderAdapter {
+  if (getForgeBrainMode() === "chatgpt") {
+    return createOpenAIAdapter(config.openai);
+  }
+
   switch (executive) {
     case "brayko":
     case "lunexa":

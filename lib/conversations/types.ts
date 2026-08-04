@@ -44,4 +44,5 @@ export interface ConversationStore {
     },
   ): Promise<ExecutiveMemory>;
   listMemories(executiveId: ExecutiveId, limit?: number): Promise<ExecutiveMemory[]>;
+  deleteMemory(id: string): Promise<boolean>;
 }
