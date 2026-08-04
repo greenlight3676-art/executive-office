@@ -13,8 +13,18 @@ function planOrder(task: TaskRecord) {
   return typeof value === "number" ? value : Number.MAX_SAFE_INTEGER;
 }
 
-function dependenciesComplete(task: TaskRecord, tasks: TaskRecord[]) {
-  return task.dependencyIds.every((id) => tasks.some((candidate) => candidate.id === id && candidate.status === "completed"));
+function taskIsRunnable(task: TaskRecord, tasks: TaskRecord[]) {
+  const explicitDependenciesComplete = task.dependencyIds.every((id) =>
+    tasks.some((candidate) => candidate.id === id && candidate.status === "completed"),
+  );
+  if (!explicitDependenciesComplete) return false;
+
+  const order = planOrder(task);
+  if (order === Number.MAX_SAFE_INTEGER) return true;
+
+  return tasks
+    .filter((candidate) => planOrder(candidate) < order)
+    .every((candidate) => candidate.status === "completed");
 }
 
 export async function POST(
@@ -36,7 +46,7 @@ export async function POST(
     const tasks = [...snapshot.tasks].sort((a, b) => planOrder(a) - planOrder(b));
 
     for (const task of tasks) {
-      if (CLOSED_TASK_STATUSES.has(task.status) || !dependenciesComplete(task, tasks)) continue;
+      if (CLOSED_TASK_STATUSES.has(task.status) || !taskIsRunnable(task, tasks)) continue;
 
       if (task.status === "waiting_approval" && task.approvalRequestId) {
         const approval = await approvalService.getApprovalRequest(task.approvalRequestId);
@@ -83,7 +93,9 @@ export async function POST(
       success: true,
       advanced,
       snapshot: nextSnapshot,
-      message: advanced.length ? `Advanced ${advanced.length} task${advanced.length === 1 ? "" : "s"}.` : "No runnable tasks were found.",
+      message: advanced.length
+        ? `Advanced ${advanced.length} task${advanced.length === 1 ? "" : "s"}.`
+        : "No runnable tasks were found. Complete active work or review approvals.",
     });
   } catch (error) {
     return NextResponse.json(
