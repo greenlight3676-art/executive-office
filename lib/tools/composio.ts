@@ -181,18 +181,18 @@ export async function executeSafeComposioAction(
   options: { action: string; payloadSummary: string; userId?: string },
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<ComposioExecutionResult | null> {
-  const toolSlug = safeActionToolSlugs[options.action];
-  if (!toolSlug) return null;
+  const spec = composioActionSpecs[options.action];
+  if (!spec || spec.approvalRequired) return null;
+  return executeMappedComposioAction(options, env);
+}
 
-  return executeComposioTool(
-    {
-      toolSlug,
-      action: options.action,
-      text: options.payloadSummary,
-      userId: options.userId,
-    },
-    env,
-  );
+export async function executeApprovedComposioAction(
+  options: { action: string; payloadSummary: string; userId?: string },
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<ComposioExecutionResult | null> {
+  const spec = composioActionSpecs[options.action];
+  if (!spec || !spec.approvalRequired) return null;
+  return executeMappedComposioAction(options, env);
 }
 
 function extractTools(payload: ComposioToolPayload): unknown[] {
@@ -221,12 +221,70 @@ function toToolSummary(tool: unknown): ComposioToolSummary | null {
   };
 }
 
-const safeActionToolSlugs: Record<string, string> = {
-  "read-email": "GMAIL_FETCH_EMAILS",
-  "read-calendar": "GOOGLECALENDAR_FIND_EVENT",
-  "inspect-repository": "GITHUB_GET_A_REPOSITORY",
-  research: "PERPLEXITYAI_PERPLEXITY_AI_SEARCH",
+type ComposioActionSpec = {
+  title: string;
+  approvalRequired: boolean;
+  directSlug?: string;
+  query?: string;
+  toolkits?: string[];
 };
+
+const composioActionSpecs: Record<string, ComposioActionSpec> = {
+  "read-email": { title: "Gmail inbox check", approvalRequired: false, directSlug: "GMAIL_FETCH_EMAILS" },
+  "read-calendar": { title: "Calendar check", approvalRequired: false, directSlug: "GOOGLECALENDAR_FIND_EVENT" },
+  "inspect-repository": { title: "GitHub repository check", approvalRequired: false, directSlug: "GITHUB_GET_A_REPOSITORY" },
+  research: { title: "Research check", approvalRequired: false, directSlug: "PERPLEXITYAI_PERPLEXITY_AI_SEARCH" },
+  "read-database": { title: "Supabase database check", approvalRequired: false, query: "run read only SQL query", toolkits: ["supabase"] },
+  "create-email-draft": { title: "Gmail draft", approvalRequired: true, query: "create Gmail draft", toolkits: ["gmail"] },
+  "send-external-message": { title: "Send Gmail message", approvalRequired: true, directSlug: "GMAIL_SEND_EMAIL" },
+  "create-calendar-event": { title: "Create calendar event", approvalRequired: true, directSlug: "GOOGLECALENDAR_CREATE_EVENT" },
+  "update-calendar-event": { title: "Update calendar event", approvalRequired: true, query: "update Google Calendar event", toolkits: ["googlecalendar"] },
+  "delete-calendar-event": { title: "Delete calendar event", approvalRequired: true, query: "delete Google Calendar event", toolkits: ["googlecalendar"] },
+  "create-doc": { title: "Create Google Doc", approvalRequired: true, query: "create Google Docs document", toolkits: ["googledocs"] },
+  "append-sheet-row": { title: "Append Google Sheet row", approvalRequired: true, query: "append row Google Sheets", toolkits: ["googlesheets"] },
+  "create-note": { title: "Create Notion note", approvalRequired: true, query: "create Notion page", toolkits: ["notion"] },
+  "create-github-issue": { title: "Create GitHub issue", approvalRequired: true, query: "create GitHub issue", toolkits: ["github"] },
+  "create-pull-request": { title: "Create GitHub pull request", approvalRequired: true, query: "create GitHub pull request", toolkits: ["github"] },
+  "merge-pull-request": { title: "Merge GitHub pull request", approvalRequired: true, query: "merge GitHub pull request", toolkits: ["github"] },
+  "commit-code": { title: "Commit GitHub code", approvalRequired: true, query: "commit multiple files GitHub", toolkits: ["github"] },
+  "create-linear-issue": { title: "Create Linear issue", approvalRequired: true, query: "create Linear issue", toolkits: ["linear"] },
+  "update-linear-issue": { title: "Update Linear issue", approvalRequired: true, query: "update Linear issue", toolkits: ["linear"] },
+  "write-database": { title: "Write Supabase database", approvalRequired: true, query: "run SQL query", toolkits: ["supabase"] },
+};
+
+export async function resolveComposioToolSlug(
+  action: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<string | null> {
+  const spec = composioActionSpecs[action];
+  if (!spec) return null;
+  if (spec.directSlug) return spec.directSlug;
+  if (!spec.query) return null;
+
+  const tools = await searchComposioTools(
+    { query: spec.query, toolkits: spec.toolkits, limit: 12 },
+    env,
+  );
+  return tools[0]?.slug ?? null;
+}
+
+async function executeMappedComposioAction(
+  options: { action: string; payloadSummary: string; userId?: string },
+  env: NodeJS.ProcessEnv,
+) {
+  const toolSlug = await resolveComposioToolSlug(options.action, env);
+  if (!toolSlug) return createUnsupportedToolResult(options.action);
+
+  return executeComposioTool(
+    {
+      toolSlug,
+      action: options.action,
+      text: options.payloadSummary,
+      userId: options.userId,
+    },
+    env,
+  );
+}
 
 export function createUnsupportedToolResult(action: string): ComposioExecutionResult {
   return {
@@ -283,14 +341,7 @@ function classifyComposioError(error: string | undefined, status: number): Compo
 }
 
 function titleForAction(action: string) {
-  const titles: Record<string, string> = {
-    "read-email": "Gmail inbox check",
-    "read-calendar": "Calendar check",
-    "inspect-repository": "GitHub repository check",
-    research: "Research check",
-  };
-
-  return titles[action] ?? action;
+  return composioActionSpecs[action]?.title ?? action;
 }
 
 function extractResultRecords(action: string, data: unknown): ComposioResultRecord[] {

@@ -59,6 +59,35 @@ type MissionResult = {
   taskCount: number;
 };
 
+type ExecutiveMemory = {
+  id: string;
+  executiveId: string;
+  scope: "short-term" | "long-term" | "project";
+  content: string;
+  kind: string;
+  createdAt: string;
+};
+
+type SpeechRecognitionEventLike = {
+  results: ArrayLike<{
+    0: { transcript: string };
+    isFinal: boolean;
+  }>;
+};
+
+type SpeechRecognitionLike = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: ((event: { error?: string }) => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
 type MessagesWorkspaceProps = {
   executives: ExecutiveProfile[];
 };
@@ -205,7 +234,15 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState("");
+  const [memories, setMemories] = useState<ExecutiveMemory[]>([]);
+  const [isMemoryOpen, setIsMemoryOpen] = useState(false);
+  const [isLoadingMemory, setIsLoadingMemory] = useState(false);
+  const [isSavingMemory, setIsSavingMemory] = useState(false);
+  const [memoryDraft, setMemoryDraft] = useState("");
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
 
   const selectedExecutive =
     executives.find((executive) => executive.id === selectedExecutiveId) ?? executives[0];
@@ -238,12 +275,27 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
 
     setActiveConversation(null);
     setMessages([]);
+    setMemories([]);
+    setIsMemoryOpen(false);
     void loadConversations();
   }, [selectedExecutiveId]);
 
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages, isSending]);
+
+  useEffect(() => {
+    const speechWindow = window as typeof window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+    setSpeechSupported(Boolean(speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition));
+
+    return () => {
+      recognitionRef.current?.stop();
+      window.speechSynthesis?.cancel();
+    };
+  }, []);
 
   async function openConversation(conversation: Conversation) {
     setActiveConversation(conversation);
@@ -270,6 +322,119 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
     setMessages([]);
     setDraft("");
     setError("");
+  }
+
+  async function loadMemories() {
+    setIsLoadingMemory(true);
+    setError("");
+    try {
+      const response = await authFetch(
+        `/api/memory?executiveId=${encodeURIComponent(selectedExecutiveId)}&limit=30`,
+        { cache: "no-store" },
+      );
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Unable to load memory.");
+      setMemories(Array.isArray(payload.memories) ? payload.memories : []);
+      setPersistence(payload.persistence === "supabase" ? "supabase" : "memory");
+    } catch (memoryError) {
+      setError(memoryError instanceof Error ? memoryError.message : "Unable to load memory.");
+    } finally {
+      setIsLoadingMemory(false);
+    }
+  }
+
+  async function toggleMemory() {
+    const next = !isMemoryOpen;
+    setIsMemoryOpen(next);
+    if (next) await loadMemories();
+  }
+
+  async function saveMemory(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const content = memoryDraft.trim();
+    if (!content || isSavingMemory) return;
+    setIsSavingMemory(true);
+    setError("");
+    try {
+      const response = await authFetch("/api/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ executiveId: selectedExecutiveId, content, scope: "long-term" }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Unable to save memory.");
+      setMemories((current) => [payload.memory, ...current]);
+      setMemoryDraft("");
+      setPersistence(payload.persistence === "supabase" ? "supabase" : "memory");
+    } catch (memoryError) {
+      setError(memoryError instanceof Error ? memoryError.message : "Unable to save memory.");
+    } finally {
+      setIsSavingMemory(false);
+    }
+  }
+
+  async function removeMemory(id: string) {
+    setError("");
+    try {
+      const response = await authFetch(`/api/memory/${encodeURIComponent(id)}`, { method: "DELETE" });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error ?? "Unable to delete memory.");
+      setMemories((current) => current.filter((memory) => memory.id !== id));
+    } catch (memoryError) {
+      setError(memoryError instanceof Error ? memoryError.message : "Unable to delete memory.");
+    }
+  }
+
+  function toggleVoiceInput() {
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const speechWindow = window as typeof window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+    const Recognition = speechWindow.SpeechRecognition ?? speechWindow.webkitSpeechRecognition;
+    if (!Recognition) {
+      setError("Voice input is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new Recognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+    recognition.onresult = (event) => {
+      let transcript = "";
+      for (let index = 0; index < event.results.length; index += 1) {
+        transcript += event.results[index][0]?.transcript ?? "";
+      }
+      if (transcript.trim()) setDraft(transcript.trim());
+    };
+    recognition.onerror = (event) => {
+      setError(event.error ? `Microphone error: ${event.error}` : "Microphone input failed.");
+      setIsListening(false);
+    };
+    recognition.onend = () => {
+      setIsListening(false);
+      recognitionRef.current = null;
+    };
+    recognitionRef.current = recognition;
+    setError("");
+    setIsListening(true);
+    recognition.start();
+  }
+
+  function speakMessage(content: string) {
+    if (!("speechSynthesis" in window)) {
+      setError("Spoken replies are not supported in this browser.");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(content);
+    utterance.rate = 1;
+    window.speechSynthesis.speak(utterance);
   }
 
   async function sendMessage(event: FormEvent<HTMLFormElement>) {
@@ -450,6 +615,17 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
               >
                 {persistence === "supabase" ? "Memory saved" : "Local memory"}
               </div>
+              <button
+                type="button"
+                onClick={() => void toggleMemory()}
+                className={`mt-2 rounded-full border px-2.5 py-1 text-[11px] ${
+                  isMemoryOpen
+                    ? "border-fuchsia-400/30 bg-fuchsia-400/10 text-fuchsia-200"
+                    : "border-white/10 bg-white/5 text-zinc-400"
+                }`}
+              >
+                Memory center
+              </button>
             </div>
           </div>
 
@@ -464,6 +640,52 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
             </div>
           </div>
         </header>
+
+        {isMemoryOpen ? (
+          <section className="border-b border-white/10 bg-black/20 p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-fuchsia-300">Memory center</p>
+                <p className="mt-1 text-xs text-zinc-500">Add or remove facts Forge should carry into future conversations.</p>
+              </div>
+              <span className="text-xs text-zinc-600">{memories.length} saved</span>
+            </div>
+            <form onSubmit={saveMemory} className="mt-3 flex gap-2">
+              <input
+                value={memoryDraft}
+                onChange={(event) => setMemoryDraft(event.target.value)}
+                placeholder="Remember that..."
+                className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm outline-none focus:border-fuchsia-400/40"
+              />
+              <button
+                type="submit"
+                disabled={!memoryDraft.trim() || isSavingMemory}
+                className="rounded-xl border border-fuchsia-400/30 bg-fuchsia-400/10 px-3 py-2 text-sm text-fuchsia-100 disabled:opacity-40"
+              >
+                {isSavingMemory ? "Saving..." : "Remember"}
+              </button>
+            </form>
+            <div className="mt-3 max-h-52 space-y-2 overflow-y-auto">
+              {isLoadingMemory ? (
+                <div className="rounded-xl bg-white/5 p-3 text-sm text-zinc-500">Loading memory...</div>
+              ) : memories.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-white/10 p-3 text-sm text-zinc-500">No saved memory for this executive yet.</div>
+              ) : (
+                memories.map((memory) => (
+                  <div key={memory.id} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <div className="min-w-0">
+                      <p className="text-sm leading-5 text-zinc-300">{memory.content}</p>
+                      <p className="mt-1 text-[10px] uppercase tracking-[0.16em] text-zinc-600">{memory.scope} • {memory.kind}</p>
+                    </div>
+                    <button type="button" onClick={() => void removeMemory(memory.id)} className="shrink-0 rounded-lg border border-rose-400/20 px-2 py-1 text-[11px] text-rose-300">
+                      Forget
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </section>
+        ) : null}
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
           {error ? (
@@ -505,6 +727,15 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
                     {message.role === "user" ? "TJ" : selectedExecutive.name}
                   </div>
                   <div className="whitespace-pre-wrap">{message.content}</div>
+                  {message.role === "assistant" ? (
+                    <button
+                      type="button"
+                      onClick={() => speakMessage(message.content)}
+                      className="mt-2 rounded-full border border-white/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-zinc-500 hover:text-zinc-300"
+                    >
+                      Read aloud
+                    </button>
+                  ) : null}
                   {toolResult ? <ToolResultCard result={toolResult} /> : null}
                   {missionResult ? <MissionResultCard mission={missionResult} /> : null}
                 </article>
@@ -538,6 +769,20 @@ export function MessagesWorkspace({ executives }: MessagesWorkspaceProps) {
             </button>
           </div>
           <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-black/30 p-2 focus-within:border-cyan-400/30">
+            {speechSupported ? (
+              <button
+                type="button"
+                onClick={toggleVoiceInput}
+                className={`rounded-xl border px-3 py-3 text-sm transition ${
+                  isListening
+                    ? "border-rose-400/40 bg-rose-400/10 text-rose-200"
+                    : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10"
+                }`}
+                aria-label={isListening ? "Stop voice input" : "Start voice input"}
+              >
+                {isListening ? "■" : "🎙"}
+              </button>
+            ) : null}
             <textarea
               value={draft}
               onChange={(event) => setDraft(event.target.value)}

@@ -9,7 +9,7 @@ import type {
 } from "./types";
 
 type Row = Record<string, unknown>;
-type WriteMethod = "POST" | "PATCH";
+type WriteMethod = "POST" | "PATCH" | "DELETE";
 
 function now() {
   return new Date().toISOString();
@@ -124,6 +124,10 @@ class InMemoryConversationStore implements ConversationStore {
       .filter((memory) => memory.executiveId === executiveId)
       .toSorted((a, b) => b.createdAt.localeCompare(a.createdAt))
       .slice(0, limit);
+  }
+
+  async deleteMemory(id: string) {
+    return this.memories.delete(id);
   }
 }
 
@@ -251,6 +255,14 @@ class SupabaseConversationStore implements ConversationStore {
       query: `executive_id=eq.${encodeURIComponent(executiveId)}&select=*&order=created_at.desc&limit=${limit}`,
     });
     return rows.map(mapMemory);
+  }
+
+  async deleteMemory(id: string) {
+    const rows = await this.request("forge_memories", {
+      method: "DELETE",
+      query: `id=eq.${encodeURIComponent(id)}&select=id`,
+    });
+    return rows.length > 0;
   }
 }
 

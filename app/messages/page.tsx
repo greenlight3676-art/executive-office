@@ -24,8 +24,8 @@ export default function MessagesPage() {
         <div className="mx-auto max-w-7xl">
           <header className="mb-5 flex flex-col gap-4 rounded-2xl border border-white/10 bg-zinc-900 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">Forge Phase 3</p>
-              <h1 className="mt-2 text-2xl font-semibold">Private messages</h1>
+              <p className="text-xs uppercase tracking-[0.22em] text-zinc-500">Forge Operator</p>
+              <h1 className="mt-2 text-2xl font-semibold">Executive command chat</h1>
             </div>
             <Link
               href="/"

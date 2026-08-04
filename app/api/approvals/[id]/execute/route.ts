@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { approvalService } from "@/lib/approvals/store";
 import { requireApiSession } from "@/lib/auth/api";
-import { executeComposioTool } from "@/lib/tools/composio";
-
-const composioExecutors: Record<string, string> = {
-  "send-external-message": "GMAIL_SEND_EMAIL",
-  "create-calendar-event": "GOOGLECALENDAR_CREATE_EVENT",
-};
+import { executeApprovedComposioAction } from "@/lib/tools/composio";
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireApiSession(request);
@@ -26,20 +21,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: "Approval request is not ready for execution." }, { status: 409 });
     }
 
-    const toolSlug = composioExecutors[approvalRequest.action];
-    if (!toolSlug) {
+    const toolResult = await executeApprovedComposioAction({
+      action: approvalRequest.action,
+      payloadSummary: approvalRequest.payloadSummary ?? approvalRequest.reason,
+      userId: "tj",
+    });
+
+    if (!toolResult || toolResult.status === "unsupported") {
       return NextResponse.json(
-        { error: "This approved action does not have a live executor yet." },
+        { error: "This approved action does not have a live executor yet.", execution: toolResult },
         { status: 409 },
       );
     }
-
-    const toolResult = await executeComposioTool({
-      toolSlug,
-      action: approvalRequest.action,
-      text: approvalRequest.payloadSummary ?? approvalRequest.reason,
-      userId: "tj",
-    });
 
     if (!toolResult.ok) {
       const failed = await approvalService.markFailed(id, actor, toolResult.error ?? toolResult.summary);
@@ -52,16 +45,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const executed = await approvalService.markExecuted(id, actor, {
       action: approvalRequest.action,
       executor: "composio",
-      toolSlug,
+      toolSlug: toolResult.toolSlug,
       logId: toolResult.logId,
       summary: toolResult.summary,
     });
 
-    return NextResponse.json({
-      success: true,
-      approvalRequest: executed,
-      execution: toolResult,
-    });
+    return NextResponse.json({ success: true, approvalRequest: executed, execution: toolResult });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to execute approval request." },
