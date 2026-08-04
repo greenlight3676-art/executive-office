@@ -34,15 +34,29 @@ jest.mock("@anthropic-ai/sdk", () => ({
 }));
 
 describe("backend foundation", () => {
-  it("routes executives to the expected provider", () => {
-    const config = getProviderConfig({ OPENAI_API_KEY: "openai", ANTHROPIC_API_KEY: "anthropic" });
-    expect(resolveExecutiveProvider("orynth", config).name).toBe("openai");
-    expect(resolveExecutiveProvider("brayko", config).name).toBe("anthropic");
+  afterEach(() => {
+    delete process.env.FORGE_SPECIALIST_MODE;
   });
 
-  it("uses Gemini for Orynth when the third model lane is configured", () => {
-    const config = getProviderConfig({ OPENAI_API_KEY: "openai", GEMINI_API_KEY: "gemini" });
+  it("routes every executive through ChatGPT by default", () => {
+    const config = getProviderConfig({
+      OPENAI_API_KEY: "openai",
+      ANTHROPIC_API_KEY: "anthropic",
+      GEMINI_API_KEY: "gemini",
+    });
+    expect(resolveExecutiveProvider("orynth", config).name).toBe("openai");
+    expect(resolveExecutiveProvider("brayko", config).name).toBe("openai");
+  });
+
+  it("uses specialist providers only after explicit opt-in", () => {
+    process.env.FORGE_SPECIALIST_MODE = "true";
+    const config = getProviderConfig({
+      OPENAI_API_KEY: "openai",
+      ANTHROPIC_API_KEY: "anthropic",
+      GEMINI_API_KEY: "gemini",
+    });
     expect(resolveExecutiveProvider("orynth", config).name).toBe("gemini");
+    expect(resolveExecutiveProvider("brayko", config).name).toBe("anthropic");
   });
 
   it("keeps Claude executives available through OpenAI when Claude is not configured", () => {
@@ -51,7 +65,8 @@ describe("backend foundation", () => {
     expect(resolveExecutiveProvider("lunexa", config).name).toBe("openai");
   });
 
-  it("falls back to OpenAI when a Claude executive request fails", async () => {
+  it("falls back to OpenAI when an opted-in Claude request fails", async () => {
+    process.env.FORGE_SPECIALIST_MODE = "true";
     const AnthropicMock = jest.requireMock("@anthropic-ai/sdk").default;
     AnthropicMock.mockImplementationOnce(() => ({
       messages: {
