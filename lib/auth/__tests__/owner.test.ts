@@ -33,4 +33,20 @@ describe("Forge owner key", () => {
     expect(isApiAuthConfigured(productionEnv)).toBe(true);
     expect(isApiAuthMisconfiguredForProduction(productionEnv)).toBe(false);
   });
+
+  it("requires a CEO allowlist for Supabase sign-in fallback", () => {
+    const incompleteEnv = {
+      NODE_ENV: "production",
+      SUPABASE_URL: "https://example.supabase.co",
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key",
+    } as NodeJS.ProcessEnv;
+    expect(isApiAuthConfigured(incompleteEnv)).toBe(false);
+
+    const secureEnv = {
+      ...incompleteEnv,
+      FORGE_CEO_EMAIL: "ceo@example.com",
+    } as NodeJS.ProcessEnv;
+    expect(isApiAuthConfigured(secureEnv)).toBe(true);
+    expect(isApiAuthMisconfiguredForProduction(secureEnv)).toBe(false);
+  });
 });
