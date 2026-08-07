@@ -56,6 +56,17 @@ export function isSupabaseConfigured(env: NodeJS.ProcessEnv = process.env): bool
   );
 }
 
+export function requireSupabaseInProduction(
+  environment: string = process.env.NODE_ENV ?? "development",
+  env: NodeJS.ProcessEnv = process.env,
+) {
+  if (environment === "production" && !isSupabaseConfigured(env)) {
+    throw new Error(
+      "Forge production requires Supabase persistent storage. Set SUPABASE_URL (or NEXT_PUBLIC_SUPABASE_URL) and SUPABASE_SERVICE_ROLE_KEY.",
+    );
+  }
+}
+
 export function getSupabaseRepositoryConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): Required<SupabaseRepositoryConfig> {

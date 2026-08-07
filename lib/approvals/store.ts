@@ -1,7 +1,11 @@
 import { InMemoryApprovalStore } from "./in-memory-store";
 import { ApprovalService } from "./service";
 import { SupabaseApprovalStore } from "./supabase-store";
-import { createSupabaseClient, isSupabaseConfigured } from "@/lib/repositories/supabase";
+import {
+  createSupabaseClient,
+  isSupabaseConfigured,
+  requireSupabaseInProduction,
+} from "@/lib/repositories/supabase";
 
 export interface ApprovalStoreFactoryOptions {
   allowMemory?: boolean;
@@ -11,6 +15,8 @@ export interface ApprovalStoreFactoryOptions {
 export function createApprovalStore(options: ApprovalStoreFactoryOptions = {}) {
   const environment = options.environment ?? process.env.NODE_ENV ?? "development";
   const allowMemory = options.allowMemory ?? environment === "test";
+
+  requireSupabaseInProduction(environment);
 
   if (allowMemory || !isSupabaseConfigured()) {
     return new InMemoryApprovalStore();

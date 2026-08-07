@@ -1,6 +1,6 @@
 import { MissionService } from "@/lib/operations/service";
 import { InMemoryMissionRepository, InMemoryTaskRepository } from "@/lib/repositories/in-memory";
-import { isSupabaseConfigured } from "@/lib/repositories/supabase";
+import { isSupabaseConfigured, requireSupabaseInProduction } from "@/lib/repositories/supabase";
 import {
   SupabaseMissionRepository,
   SupabaseTaskRepository,
@@ -19,6 +19,7 @@ const globalForForge = globalThis as typeof globalThis & {
 };
 
 function createRuntime(): ForgeRuntime {
+  requireSupabaseInProduction();
   const useSupabase = isSupabaseConfigured();
   const missions: MissionRepository = useSupabase
     ? new SupabaseMissionRepository()

@@ -81,7 +81,7 @@ export class InMemoryMissionRepository implements MissionRepository {
   async update(id: string, update: Partial<MissionRecord>) {
     const existing = this.records.get(id);
     if (!existing) throw new Error("Mission not found");
-    const next = { ...existing, ...update, updatedAt: new Date().toISOString() };
+    const next = { ...existing, ...update, updatedAt: update.updatedAt ?? new Date().toISOString() };
     this.records.set(id, next);
     return next;
   }
@@ -106,7 +106,7 @@ export class InMemoryTaskRepository implements TaskRepository {
   async update(id: string, update: Partial<TaskRecord>) {
     const existing = this.records.get(id);
     if (!existing) throw new Error("Task not found");
-    const next = { ...existing, ...update, updatedAt: new Date().toISOString() };
+    const next = { ...existing, ...update, updatedAt: update.updatedAt ?? new Date().toISOString() };
     this.records.set(id, next);
     return next;
   }
