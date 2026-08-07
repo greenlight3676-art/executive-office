@@ -1,6 +1,10 @@
 import { randomUUID } from "crypto";
 import type { ExecutiveId } from "@/lib/agents/types";
-import { getSupabaseRepositoryConfig, isSupabaseConfigured } from "@/lib/repositories/supabase";
+import {
+  getSupabaseRepositoryConfig,
+  isSupabaseConfigured,
+  requireSupabaseInProduction,
+} from "@/lib/repositories/supabase";
 import type {
   Conversation,
   ConversationMessage,
@@ -273,6 +277,7 @@ type GlobalConversationRuntime = typeof globalThis & {
 const globalForConversations = globalThis as GlobalConversationRuntime;
 
 function createConversationStore(): ConversationStore {
+  requireSupabaseInProduction();
   return isSupabaseConfigured()
     ? new SupabaseConversationStore()
     : new InMemoryConversationStore();
