@@ -57,7 +57,7 @@ export function isSupabaseConfigured(env: NodeJS.ProcessEnv = process.env): bool
 }
 
 export function requireSupabaseInProduction(
-  environment = process.env.NODE_ENV ?? "development",
+  environment: string = process.env.NODE_ENV ?? "development",
   env: NodeJS.ProcessEnv = process.env,
 ) {
   if (environment === "production" && !isSupabaseConfigured(env)) {
