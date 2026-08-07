@@ -9,12 +9,13 @@ import {
 function getAuthConfig(env: NodeJS.ProcessEnv = process.env) {
   const supabaseUrl = env.SUPABASE_URL ?? env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const allowedEmail = env.FORGE_CEO_EMAIL?.trim().toLowerCase();
 
-  if (!supabaseUrl || !anonKey) {
+  if (!supabaseUrl || !anonKey || !allowedEmail) {
     return null;
   }
 
-  return { supabaseUrl, anonKey };
+  return { supabaseUrl, anonKey, allowedEmail };
 }
 
 export function isApiAuthConfigured(env: NodeJS.ProcessEnv = process.env) {
@@ -80,10 +81,8 @@ export async function requireApiSession(request: NextRequest) {
     return NextResponse.json({ error: "Session expired. Please sign in again." }, { status: 401 });
   }
 
-  const allowedEmail = process.env.FORGE_CEO_EMAIL?.trim().toLowerCase();
   const userEmail = data.user.email?.trim().toLowerCase();
-
-  if (allowedEmail && userEmail !== allowedEmail) {
+  if (userEmail !== config.allowedEmail) {
     return NextResponse.json({ error: "This Forge account is not approved." }, { status: 403 });
   }
 
