@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { approvalService } from "@/lib/approvals/store";
 import { requireApiSession } from "@/lib/auth/api";
+import {
+  createToolFailureResult,
+  executeApprovedComposioAction,
+} from "@/lib/tools/composio";
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const authError = await requireApiSession(request);
@@ -30,7 +34,43 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
 
     if (action === "approve") {
       const decision = await approvalService.approve(id, actor, reason);
-      return NextResponse.json({ success: true, decision });
+      const approvalRequest = await approvalService.getApprovalRequest(id);
+
+      if (!approvalRequest) {
+        return NextResponse.json({ success: true, decision });
+      }
+
+      const execution = await executeApprovedComposioAction({
+        action: approvalRequest.action,
+        payloadSummary: approvalRequest.payloadSummary ?? approvalRequest.reason,
+        userId: "tj",
+      }).catch((error) => createToolFailureResult(approvalRequest.action, error));
+
+      if (!execution) {
+        return NextResponse.json({
+          success: true,
+          decision,
+          execution: null,
+          message: "Approved. This action does not have an automatic executor yet.",
+        });
+      }
+
+      if (execution.ok && execution.status === "success") {
+        const completed = await approvalService.markExecuted(id, actor, {
+          action: approvalRequest.action,
+          toolSlug: execution.toolSlug,
+          logId: execution.logId,
+          summary: execution.summary.slice(0, 500),
+        });
+        return NextResponse.json({ success: true, decision, approvalRequest: completed, execution });
+      }
+
+      const failed = await approvalService.markFailed(
+        id,
+        actor,
+        execution.error ?? execution.summary ?? "Approved tool execution failed.",
+      );
+      return NextResponse.json({ success: false, decision, approvalRequest: failed, execution }, { status: 502 });
     }
 
     if (action === "reject") {
