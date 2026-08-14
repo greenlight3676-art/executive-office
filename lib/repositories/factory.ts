@@ -1,4 +1,5 @@
 import { InMemoryApprovalStore } from "@/lib/approvals/in-memory-store";
+import { SupabaseApprovalStore } from "@/lib/approvals/supabase-store";
 import {
   InMemoryConversationRepository,
   InMemoryMemoryRepository,
@@ -7,7 +8,10 @@ import {
   InMemoryTaskRepository,
 } from "./in-memory";
 import { createSupabaseRepositories } from "./supabase-adapter";
-import { createSupabaseClient } from "./supabase";
+import {
+  createSupabaseClient,
+  requireSupabaseInProduction,
+} from "./supabase";
 
 export interface PersistenceFactoryOptions {
   allowMemory?: boolean;
@@ -26,6 +30,8 @@ export function createPersistenceRepositories(options: PersistenceFactoryOptions
   const environment = options.environment ?? process.env.NODE_ENV ?? "development";
   const { supabaseUrl, serviceRoleKey } = getSupabaseEnvironment();
 
+  requireSupabaseInProduction(environment);
+
   if (environment !== "test" && !allowMemory && (!supabaseUrl || !serviceRoleKey)) {
     throw new Error("Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
   }
@@ -42,8 +48,6 @@ export function createPersistenceRepositories(options: PersistenceFactoryOptions
     } as const;
   }
 
-  const client = createSupabaseClient({ url: supabaseUrl, serviceRoleKey });
-  void client;
   return createSupabaseRepositories({ url: supabaseUrl, serviceRoleKey });
 }
 
@@ -52,11 +56,19 @@ export function createApprovalStore(options: PersistenceFactoryOptions = {}) {
   const environment = options.environment ?? process.env.NODE_ENV ?? "development";
   const { supabaseUrl, serviceRoleKey } = getSupabaseEnvironment();
 
+  requireSupabaseInProduction(environment);
+
   if (environment !== "test" && !allowMemory && (!supabaseUrl || !serviceRoleKey)) {
     throw new Error("Missing Supabase configuration. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
   }
 
-  return new InMemoryApprovalStore();
+  if (environment === "test" || allowMemory) {
+    return new InMemoryApprovalStore();
+  }
+
+  return new SupabaseApprovalStore(
+    createSupabaseClient({ url: supabaseUrl, serviceRoleKey }),
+  );
 }
 
 // This file intentionally exports createApprovalStore locally; do not import it from approvals/store.

@@ -1,15 +1,29 @@
 import fs from "fs";
 import path from "path";
 import { createApprovalStore } from "../../approvals/store";
-import { InMemoryConversationRepository, InMemoryMemoryRepository, InMemoryMessageRepository, InMemoryMissionRepository, InMemoryTaskRepository } from "../in-memory";
+import {
+  InMemoryConversationRepository,
+  InMemoryMemoryRepository,
+  InMemoryMessageRepository,
+  InMemoryMissionRepository,
+  InMemoryTaskRepository,
+} from "../in-memory";
 import { createPersistenceRepositories } from "../factory";
-import { SupabaseConversationRepository, SupabaseMemoryRepository, SupabaseMessageRepository, SupabaseMissionRepository, SupabaseTaskRepository } from "../supabase-adapter";
+import {
+  SupabaseConversationRepository,
+  SupabaseMemoryRepository,
+  SupabaseMessageRepository,
+  SupabaseMissionRepository,
+  SupabaseTaskRepository,
+} from "../supabase-adapter";
+import { requireSupabaseInProduction } from "../supabase";
 
 describe("persistence factory", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
     process.env = { ...originalEnv };
+    delete process.env.SUPABASE_URL;
     delete process.env.NEXT_PUBLIC_SUPABASE_URL;
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   });
@@ -44,7 +58,14 @@ describe("persistence factory", () => {
   });
 
   it("fails clearly when required Supabase variables are incomplete", () => {
-    expect(() => createPersistenceRepositories({ allowMemory: false, environment: "production" })).toThrow(/NEXT_PUBLIC_SUPABASE_URL|SUPABASE_SERVICE_ROLE_KEY/i);
+    expect(() => createPersistenceRepositories({ allowMemory: false, environment: "production" })).toThrow(/Supabase/i);
+    expect(() => createApprovalStore({ allowMemory: false, environment: "production" })).toThrow(/Supabase/i);
+    expect(() => requireSupabaseInProduction("production", process.env)).toThrow(/persistent storage/i);
+  });
+
+  it("still permits in-memory storage outside production", () => {
+    expect(() => requireSupabaseInProduction("development", process.env)).not.toThrow();
+    expect(() => requireSupabaseInProduction("test", process.env)).not.toThrow();
   });
 
   it("does not expose the service-role key in client source", () => {

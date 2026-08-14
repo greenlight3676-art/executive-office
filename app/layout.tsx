@@ -4,6 +4,10 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "FORGE Executive Office",
   description: "A premium AI operating system for executive leadership and multi-provider orchestration.",
+  icons: {
+    icon: "/forge-icon-192.png",
+    apple: "/forge-icon-180.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

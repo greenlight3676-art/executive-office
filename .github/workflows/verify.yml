@@ -36,6 +36,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key"
           SUPABASE_URL: "https://example.supabase.co"
           SUPABASE_SERVICE_ROLE_KEY: "test-service-role-key"
+          FORGE_OWNER_KEY: "test-owner-key"
+          FORGE_CEO_EMAIL: "ceo@example.com"
           OPENAI_API_KEY: "test-openai-key"
           ANTHROPIC_API_KEY: "test-anthropic-key"
           COMPOSIO_API_KEY: "test-composio-key"
